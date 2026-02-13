@@ -74,7 +74,7 @@ private:
     QVBoxLayout       *m_nodeListLayout;
     QWidget           *m_nodeListContainer;
     QScrollArea       *m_nodeScroll;
-    QLineEdit         *m_broadcastInput;
+    AALineEdit        *m_broadcastInput;
     AAButton          *m_broadcastBtn;
     QListWidget       *m_logList;
 

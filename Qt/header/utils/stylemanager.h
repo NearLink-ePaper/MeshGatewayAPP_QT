@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QWidget>
 #include <QPushButton>
+#include <QLineEdit>
 #include <QColor>
 
 /**
@@ -89,6 +90,42 @@ private:
     QColor m_border  = Qt::transparent;
     int    m_radius  = 0;
     int    m_borderW = 0;
+};
+
+/**
+ * 抗锯齿 QLineEdit — 手动绘制圆角背景/边框，支持 focus 状态边框色
+ */
+class AALineEdit : public QLineEdit {
+    Q_OBJECT
+    Q_PROPERTY(QColor bgColor          READ bgColor          WRITE setBgColor)
+    Q_PROPERTY(QColor borderColor       READ borderColor       WRITE setBorderColor)
+    Q_PROPERTY(QColor focusBorderColor  READ focusBorderColor  WRITE setFocusBorderColor)
+    Q_PROPERTY(int    borderRadius      READ borderRadius      WRITE setBorderRadius)
+    Q_PROPERTY(int    borderWidth       READ borderWidth       WRITE setBorderWidth)
+public:
+    using QLineEdit::QLineEdit;
+
+    QColor bgColor()         const { return m_bg; }
+    QColor borderColor()     const { return m_border; }
+    QColor focusBorderColor() const { return m_focusBorder; }
+    int    borderRadius()    const { return m_radius; }
+    int    borderWidth()     const { return m_borderW; }
+
+    void setBgColor(const QColor &c)         { m_bg = c; update(); }
+    void setBorderColor(const QColor &c)     { m_border = c; update(); }
+    void setFocusBorderColor(const QColor &c) { m_focusBorder = c; update(); }
+    void setBorderRadius(int r)              { m_radius = r; update(); }
+    void setBorderWidth(int w)               { m_borderW = w; update(); }
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
+private:
+    QColor m_bg          = Qt::transparent;
+    QColor m_border      = Qt::transparent;
+    QColor m_focusBorder = Qt::transparent;
+    int    m_radius      = 0;
+    int    m_borderW     = 0;
 };
 
 #endif // STYLEMANAGER_H

@@ -11,11 +11,16 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     mainLayout->setContentsMargins(16, 16, 16, 16);
     mainLayout->setSpacing(12);
 
-    // 调试信息卡片
-    m_debugLabel = new QLabel(m_ble->debugInfo(), this);
+    // 调试信息卡片（AAWidget 容器提供抗锯齿圆角）
+    auto *debugCard = new AAWidget(this);
+    debugCard->setObjectName("debugCard");
+    auto *debugCardLayout = new QVBoxLayout(debugCard);
+    debugCardLayout->setContentsMargins(12, 10, 12, 10);
+    m_debugLabel = new QLabel(m_ble->debugInfo(), debugCard);
     m_debugLabel->setObjectName("debugLabel");
     m_debugLabel->setWordWrap(true);
-    mainLayout->addWidget(m_debugLabel);
+    debugCardLayout->addWidget(m_debugLabel);
+    mainLayout->addWidget(debugCard);
 
     // 设备列表（初始隐藏，扫描到设备后显示）
     m_deviceList = new QListWidget(this);

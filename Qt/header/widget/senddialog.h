@@ -7,6 +7,7 @@
 #include <QPushButton>
 
 #include "meshprotocol.h"
+#include "stylemanager.h"
 
 /**
  * 单播发送对话框 — 向指定节点发送数据
@@ -22,7 +23,7 @@ public:
 
 private:
     MeshNode    m_node;
-    QLineEdit  *m_input;
+    AALineEdit *m_input;
 };
 
 #endif // SENDDIALOG_H

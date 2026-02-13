@@ -28,7 +28,7 @@ SendDialog::SendDialog(const MeshNode &node, QWidget *parent)
     mainLayout->addWidget(descLabel);
 
     // 输入框
-    m_input = new QLineEdit(this);
+    m_input = new AALineEdit(this);
     m_input->setObjectName("sendDialogInput");
     m_input->setPlaceholderText(tr("Enter data..."));
     m_input->setMinimumHeight(36);

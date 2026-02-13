@@ -74,11 +74,16 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->setContentsMargins(14, 10, 14, 10);
     mainLayout->setSpacing(10);
 
-    // 调试信息
-    m_debugLabel = new QLabel(m_ble->debugInfo(), this);
+    // 调试信息（AAWidget 容器提供抗锯齿圆角）
+    auto *debugCard = new AAWidget(this);
+    debugCard->setObjectName("debugCard");
+    auto *debugCardLayout = new QVBoxLayout(debugCard);
+    debugCardLayout->setContentsMargins(12, 10, 12, 10);
+    m_debugLabel = new QLabel(m_ble->debugInfo(), debugCard);
     m_debugLabel->setObjectName("debugLabel");
     m_debugLabel->setWordWrap(true);
-    mainLayout->addWidget(m_debugLabel);
+    debugCardLayout->addWidget(m_debugLabel);
+    mainLayout->addWidget(debugCard);
 
     // 设备信息卡片
     auto *deviceCard = new AAWidget(this);
@@ -138,7 +143,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     bcastLayout->setContentsMargins(8, 6, 8, 6);
     bcastLayout->setSpacing(8);
 
-    m_broadcastInput = new QLineEdit(this);
+    m_broadcastInput = new AALineEdit(this);
     m_broadcastInput->setObjectName("broadcastInput");
     m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
     m_broadcastInput->setAttribute(Qt::WA_InputMethodEnabled, true);

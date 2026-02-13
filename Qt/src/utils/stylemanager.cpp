@@ -92,6 +92,33 @@ void AAButton::paintEvent(QPaintEvent *)
     p.drawText(rect(), Qt::AlignCenter, text());
 }
 
+// ─── AALineEdit ──────────────────────────────────────────
+void AALineEdit::paintEvent(QPaintEvent *event)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+
+    QColor borderC = (hasFocus() && m_focusBorder.alpha() > 0) ? m_focusBorder : m_border;
+
+    const qreal hw = m_borderW / 2.0;
+    QRectF r = QRectF(rect()).adjusted(hw, hw, -hw, -hw);
+
+    QPainterPath path;
+    path.addRoundedRect(r, m_radius, m_radius);
+
+    if (m_bg.alpha() > 0)
+        p.fillPath(path, m_bg);
+
+    if (m_borderW > 0 && borderC.alpha() > 0) {
+        p.setPen(QPen(borderC, m_borderW));
+        p.drawPath(path);
+    }
+    p.end();
+
+    // QLineEdit 绘制文字/光标/选区（QSS 设 background:transparent; border:none;）
+    QLineEdit::paintEvent(event);
+}
+
 QString StyleManager::darkThemeStyleSheet()
 {
     return QStringLiteral(R"(
@@ -100,7 +127,8 @@ QMainWindow { background-color:#0D1117; }
 QWidget#topBar { background-color:#161B22; border-bottom:1px solid rgba(240,246,252,0.1); }
 QLabel#appTitle { color:#FFF; font-size:17px; font-weight:600; }
 QLabel#statusDot { min-width:10px; max-width:10px; min-height:10px; max-height:10px; border-radius:5px; }
-QLabel#debugLabel { background-color:#161B22; color:#D29922; font-family:monospace; font-size:11px; padding:10px 12px; border:1px solid rgba(210,153,34,0.15); border-radius:10px; }
+AAWidget#debugCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#26D29922; qproperty-borderRadius:10; qproperty-borderWidth:1; }
+QLabel#debugLabel { background-color:transparent; color:#D29922; font-family:monospace; font-size:11px; }
 AAButton#scanButton { background-color:transparent; border:none; color:#FFF; font-size:14px; font-weight:600; padding:12px 24px; qproperty-bgColor:#238636; qproperty-borderColor:#663FB950; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 AAButton#scanButton:disabled { color:#484F58; }
 QLabel#hintLabel { color:#484F58; font-size:13px; padding:48px 24px; }
@@ -111,7 +139,7 @@ AAButton#disconnectBtn { background-color:transparent; border:none; color:#F8514
 AAButton#queryTopoBtn { background-color:transparent; border:none; color:#58A6FF; padding:10px; font-weight:600; qproperty-bgColor:#21262D; qproperty-borderColor:#4058A6FF; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 AAWidget#nodeCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 AAWidget#broadcastCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
-QLineEdit#broadcastInput,QLineEdit#sendDialogInput { background-color:#0D1117; color:#E6EDF3; border:1px solid rgba(240,246,252,0.1); border-radius:8px; padding:9px 12px; }
+AALineEdit#broadcastInput,AALineEdit#sendDialogInput { background-color:transparent; border:none; color:#E6EDF3; padding:9px 12px; qproperty-bgColor:#0D1117; qproperty-borderColor:#1AF0F6FC; qproperty-focusBorderColor:#8058A6FF; qproperty-borderRadius:8; qproperty-borderWidth:1; }
 AAButton#broadcastBtn,AAButton#sendDialogSend { background-color:transparent; border:none; color:#FFF; padding:9px 20px; font-weight:600; qproperty-bgColor:#238636; qproperty-borderColor:#663FB950; qproperty-borderRadius:8; qproperty-borderWidth:1; }
 AAWidget#logContainer { background-color:transparent; border:none; qproperty-bgColor:#0D1117; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 QListWidget#logList { background-color:transparent; border:none; font-family:monospace; font-size:11px; }
