@@ -188,11 +188,10 @@ jobs:
           QT_HOST_PATH=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/macos
 
           cmake -B build -G Xcode \
-            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_TOOLCHAIN_FILE=$QT_IOS/lib/cmake/Qt6/qt.toolchain.cmake \
+            -DQT_HOST_PATH=$QT_HOST_PATH \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
-            -DCMAKE_PREFIX_PATH=$QT_IOS \
-            -DQT_HOST_PATH=$QT_HOST_PATH \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
           cmake --build build --config ${{ env.BUILD_TYPE }} -- \
@@ -281,17 +280,13 @@ jobs:
 
       - name: Build APK
         run: |
-          ${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/gcc_64/bin/androiddeployqt \
-            --input build/android-NearLink_Mesh-deployment-settings.json \
-            --output build/android-build-NearLink_Mesh \
-            --android-platform android-34 \
-            --jdk $JAVA_HOME \
-            --gradle \
-            --release
+          cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          cp build/android-build-NearLink_Mesh/build/outputs/apk/release/*.apk artifact/NearLink_Mesh-arm64-v8a-release.apk 2>/dev/null || \
-          cp build/android-build-NearLink_Mesh/build/outputs/apk/debug/*.apk artifact/NearLink_Mesh-arm64-v8a.apk
+          find build -name "*.apk" -type f | head -5
+          find build -name "*.apk" -type f -exec cp {} artifact/ \;
+          # Rename for clarity
+          cd artifact && for f in *.apk; do mv "$f" "NearLink_Mesh-arm64-v8a.apk" 2>/dev/null; break; done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -361,17 +356,13 @@ jobs:
 
       - name: Build APK
         run: |
-          ${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/gcc_64/bin/androiddeployqt \
-            --input build/android-NearLink_Mesh-deployment-settings.json \
-            --output build/android-build-NearLink_Mesh \
-            --android-platform android-34 \
-            --jdk $JAVA_HOME \
-            --gradle \
-            --release
+          cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          cp build/android-build-NearLink_Mesh/build/outputs/apk/release/*.apk artifact/NearLink_Mesh-x86_64-release.apk 2>/dev/null || \
-          cp build/android-build-NearLink_Mesh/build/outputs/apk/debug/*.apk artifact/NearLink_Mesh-x86_64.apk
+          find build -name "*.apk" -type f | head -5
+          find build -name "*.apk" -type f -exec cp {} artifact/ \;
+          # Rename for clarity
+          cd artifact && for f in *.apk; do mv "$f" "NearLink_Mesh-x86_64.apk" 2>/dev/null; break; done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

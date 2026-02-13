@@ -103,6 +103,11 @@ elseif(ANDROID)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Android/CMakeLists.txt")
         include(Android/CMakeLists.txt)
     endif()
+elseif(OHOS OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
+    # OpenHarmony (鸿蒙) 平台特定代码
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Harmony/CMakeLists.txt")
+        include(Harmony/CMakeLists.txt)
+    endif()
 elseif(UNIX)
     # Debian/Linux 平台特定代码
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Debian/CMakeLists.txt")
