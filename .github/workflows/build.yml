@@ -543,32 +543,15 @@ jobs:
             echo "Copied qtohextras -> /tmp/qt-src/qtohextras"
           fi
 
-          # 4) 在整个源码树中搜索 ohos mkspec 并安装到 qtbase/mkspecs
-          echo "=== Searching for ohos mkspec in entire source tree ==="
-          OHOS_MKSPEC=$(find /tmp/qt-src -path "*/mkspecs/ohos-clang/qmake.conf" | head -1)
-          if [ -n "$OHOS_MKSPEC" ]; then
-            MKSPEC_DIR=$(dirname "$OHOS_MKSPEC")
-            echo "Found ohos-clang mkspec at: $MKSPEC_DIR"
-            if [ "$MKSPEC_DIR" != "/tmp/qt-src/qtbase/mkspecs/ohos-clang" ]; then
-              cp -rv "$MKSPEC_DIR" /tmp/qt-src/qtbase/mkspecs/ohos-clang
-              echo "Installed to qtbase/mkspecs/ohos-clang"
-            fi
+          # 4) 验证 oh-clang mkspec (补丁创建的是 oh-clang 不是 ohos-clang)
+          echo "=== Verification ==="
+          if [ -d /tmp/qt-src/qtbase/mkspecs/oh-clang ]; then
+            echo "OK: oh-clang mkspec found"
+            ls /tmp/qt-src/qtbase/mkspecs/oh-clang/
           else
-            echo "::warning::ohos-clang qmake.conf not found anywhere"
-            echo "All qmake.conf paths:"
-            find /tmp/qt-src -name "qmake.conf" -path "*/ohos*" | head -10 || echo "none"
-            find /tmp/qt-src -name "qmake.conf" -path "*/oh*" | head -10 || echo "none"
-          fi
-
-          # 5) 最终验证
-          echo "=== Final Verification ==="
-          if [ -d /tmp/qt-src/qtbase/mkspecs/ohos-clang ]; then
-            echo "OK: ohos-clang mkspec installed"
-            ls /tmp/qt-src/qtbase/mkspecs/ohos-clang/
-          else
-            echo "::error::ohos-clang mkspec STILL not found"
-            echo "All mkspecs:"
-            ls /tmp/qt-src/qtbase/mkspecs/ | head -40
+            echo "::error::oh-clang mkspec not found after patching"
+            echo "mkspecs containing 'oh':"
+            ls /tmp/qt-src/qtbase/mkspecs/ | grep -i oh || echo "none"
             exit 1
           fi
 
@@ -578,8 +561,7 @@ jobs:
         if: steps.qt-cache.outputs.cache-hit != 'true'
         env:
           OHOS_ARCH: arm64-v8a
-          NATIVE_OHOS_SDK: /opt/ohos-sdk
-          OHOS_SDK_ROOT: /opt/ohos-sdk
+          OHOS_SDK_PATH: /opt/ohos-sdk
         run: |
           echo "=== configure --help (ohos related) ==="
           /tmp/qt-src/configure --help 2>/dev/null | grep -iE "ohos|arch|platform" | head -20 || true
@@ -600,7 +582,7 @@ jobs:
 
           /tmp/qt-src/configure \
             -v \
-            -xplatform ohos-clang \
+            -xplatform oh-clang \
             -prefix /data/storage/el1/bundle/libs/arm64 \
             -extprefix /opt/qt-ohos \
             -opensource -confirm-license \
@@ -616,6 +598,9 @@ jobs:
 
       - name: Build & Install Qt
         if: steps.qt-cache.outputs.cache-hit != 'true'
+        env:
+          OHOS_ARCH: arm64-v8a
+          OHOS_SDK_PATH: /opt/ohos-sdk
         run: |
           cd /tmp/qt-build
           make -j$(nproc)
