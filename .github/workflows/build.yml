@@ -509,10 +509,23 @@ jobs:
           cd /tmp/build-qt
           python build-qt-ohos.py --init --use_github
 
-          # 5) 构建: configure + build + install
+          # 5) 补丁后修复: qohwindownode.cpp 多余 #endif (补丁 bug)
+          WNODE=/tmp/build-qt/work/qt5/qtbase/src/plugins/platforms/openharmony/qohwindownode.cpp
+          if [ -f "$WNODE" ]; then
+            echo "=== qohwindownode.cpp around line 245 (before fix) ==="
+            sed -n '240,250p' "$WNODE"
+            sed -i '245{/^#endif/d}' "$WNODE"
+            echo "=== after fix ==="
+            sed -n '240,250p' "$WNODE"
+          else
+            echo "::warning::qohwindownode.cpp not found at expected path"
+            find /tmp/build-qt/work -name "qohwindownode.cpp" 2>/dev/null | head -5
+          fi
+
+          # 6) 构建: configure + build + install
           python build-qt-ohos.py --exe_stage all --use_github
 
-          # 6) 复制到缓存路径
+          # 7) 复制到缓存路径
           QT_OUTPUT=$(find /tmp/build-qt/work/output -maxdepth 1 -type d -name "Qt5.15*" | head -1)
           if [ -z "$QT_OUTPUT" ]; then
             echo "::error::Qt build output not found"
