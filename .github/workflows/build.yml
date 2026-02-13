@@ -68,7 +68,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             libgl1-mesa-dev libglib2.0-dev \
             libbluetooth-dev libdbus-1-dev \
             libxkbcommon-dev libxcb-xkb-dev \
@@ -197,6 +197,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
+          modules: qtconnectivity
           cache: true
           set-env: false
 
@@ -275,6 +276,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          modules: qtconnectivity
           cache: true
           set-env: false
 
@@ -353,6 +355,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          modules: qtconnectivity
           cache: true
           set-env: false
 
@@ -424,7 +427,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
             build-essential perl python3 gperf bison flex \
             libgl1-mesa-dev libglib2.0-dev \
             libfontconfig1-dev libfreetype6-dev \
@@ -432,21 +435,39 @@ jobs:
             libxi-dev libxrender-dev libxcb1-dev \
             libxkbcommon-dev libxkbcommon-x11-dev
 
+      - name: OHOS SDK cache key
+        id: sdk-key
+        run: echo "hash=$(echo -n '${{ vars.OHOS_SDK_URL }}' | sha256sum | cut -c1-16)" >> $GITHUB_OUTPUT
+
+      - name: Cache OHOS SDK
+        id: ohos-sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/ohos-sdk
+          key: ohos-sdk-${{ env.OHOS_ARCH }}-${{ steps.sdk-key.outputs.hash }}
+
       - name: Download & extract OHOS SDK
+        if: steps.ohos-sdk-cache.outputs.cache-hit != 'true'
         run: |
           wget -q "${{ vars.OHOS_SDK_URL }}" -O /tmp/ohos-sdk.zip
-          unzip -q /tmp/ohos-sdk.zip -d /tmp/ohos-sdk
+          unzip -q /tmp/ohos-sdk.zip -d /tmp/ohos-sdk-raw
 
-          NATIVE_DIR=$(find /tmp/ohos-sdk -type d -name "native" | head -1)
+          NATIVE_DIR=$(find /tmp/ohos-sdk-raw -type d -name "native" | head -1)
           if [ -z "$NATIVE_DIR" ]; then
             echo "::error::OHOS SDK native directory not found in archive"
             exit 1
           fi
 
-          echo "NATIVE_OHOS_SDK=$NATIVE_DIR"  >> $GITHUB_ENV
-          echo "OHOS_SDK_SYSROOT=$NATIVE_DIR/sysroot" >> $GITHUB_ENV
-          echo "LLVM_INSTALL_DIR=$NATIVE_DIR/llvm"     >> $GITHUB_ENV
-          echo "$NATIVE_DIR/llvm/bin" >> $GITHUB_PATH
+          sudo mkdir -p /opt/ohos-sdk
+          sudo cp -a "$NATIVE_DIR"/. /opt/ohos-sdk/
+          rm -rf /tmp/ohos-sdk-raw /tmp/ohos-sdk.zip
+
+      - name: Set OHOS SDK environment
+        run: |
+          echo "NATIVE_OHOS_SDK=/opt/ohos-sdk"          >> $GITHUB_ENV
+          echo "OHOS_SDK_SYSROOT=/opt/ohos-sdk/sysroot"  >> $GITHUB_ENV
+          echo "LLVM_INSTALL_DIR=/opt/ohos-sdk/llvm"      >> $GITHUB_ENV
+          echo "/opt/ohos-sdk/llvm/bin" >> $GITHUB_PATH
 
       # ── 编译 Qt 库 (带缓存) ──────────────────────────────
       - name: Cache Qt OHOS library
