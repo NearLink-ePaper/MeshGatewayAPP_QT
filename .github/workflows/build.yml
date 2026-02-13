@@ -485,7 +485,7 @@ jobs:
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
           QT_REPO="${{ vars.QT_OHOS_REPO || 'https://gitcode.com/openharmony-sig/qt.git' }}"
-          QT_BRANCH="${{ vars.QT_OHOS_BRANCH || 'dev' }}"
+          QT_BRANCH="${{ vars.QT_OHOS_BRANCH || 'master' }}"
           echo "Cloning $QT_REPO (branch: $QT_BRANCH) ..."
           git clone --depth 1 -b "$QT_BRANCH" "$QT_REPO" /tmp/qt-src
 
