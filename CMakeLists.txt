@@ -170,11 +170,11 @@ endif()
 
 # ─── iOS 特定属性 ─────────────────────────────────────────
 if(IOS AND DEFINED IOS_INFO_PLIST)
-    # LaunchScreen.storyboard 必须作为 bundle resource，否则灵动岛/全面屏以兼容模式运行
+    # LaunchScreen — 使用 Qt 6 的 QT_IOS_LAUNCH_SCREEN 属性
+    # 不能手动添加为 target_sources，否则会与 Qt 自动生成的 LaunchScreen 冲突
     if(DEFINED IOS_LAUNCH_STORYBOARD)
-        target_sources(NearLink_Mesh PRIVATE "${IOS_LAUNCH_STORYBOARD}")
-        set_source_files_properties("${IOS_LAUNCH_STORYBOARD}" PROPERTIES
-            MACOSX_PACKAGE_LOCATION Resources)
+        set_target_properties(NearLink_Mesh PROPERTIES
+            QT_IOS_LAUNCH_SCREEN "${IOS_LAUNCH_STORYBOARD}")
     endif()
 
     # AppIcon — Asset Catalog
