@@ -445,16 +445,26 @@ jobs:
           wget -q "${{ env.OHOS_SDK_URL }}" -O /tmp/ohos-sdk.tar.gz
           mkdir -p /tmp/ohos-sdk-raw
           tar -xzf /tmp/ohos-sdk.tar.gz -C /tmp/ohos-sdk-raw
+          rm /tmp/ohos-sdk.tar.gz
 
-          NATIVE_DIR=$(find /tmp/ohos-sdk-raw -type d -name "native" | head -1)
+          # tar.gz 内含 linux/ 目录，native SDK 以 native*.zip 形式存放
+          NATIVE_ZIP=$(find /tmp/ohos-sdk-raw -path "*/linux/native*.zip" | head -1)
+          if [ -z "$NATIVE_ZIP" ]; then
+            echo "::error::native*.zip not found in SDK archive"
+            find /tmp/ohos-sdk-raw -type f | head -20
+            exit 1
+          fi
+          unzip -q "$NATIVE_ZIP" -d /tmp/ohos-sdk-native
+
+          NATIVE_DIR=$(find /tmp/ohos-sdk-native -type d -name "native" | head -1)
           if [ -z "$NATIVE_DIR" ]; then
-            echo "::error::OHOS SDK native directory not found in archive"
+            echo "::error::native/ directory not found after unzip"
             exit 1
           fi
 
           sudo mkdir -p /opt/ohos-sdk
           sudo cp -a "$NATIVE_DIR"/. /opt/ohos-sdk/
-          rm -rf /tmp/ohos-sdk-raw /tmp/ohos-sdk.tar.gz
+          rm -rf /tmp/ohos-sdk-raw /tmp/ohos-sdk-native
 
       - name: Set OHOS SDK environment
         run: |
