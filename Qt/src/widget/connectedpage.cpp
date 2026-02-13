@@ -1,7 +1,6 @@
 #include "connectedpage.h"
 #include "stylemanager.h"
 #include <QDateTime>
-#include <QFont>
 #include <QFrame>
 #include <QMouseEvent>
 #include <QScrollBar>
@@ -37,7 +36,6 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
     textLayout->setSpacing(1);
     auto *addrLabel = new QLabel(QString("0x%1").arg(MeshProtocol::addrToHex4(node.addr)), this);
     addrLabel->setObjectName("nodeAddr");
-    addrLabel->setFont(QFont("Consolas", 11, QFont::Bold));
 
     QString hopText;
     QString hopObj;
@@ -197,7 +195,6 @@ void ConnectedPage::addLog(const QString &text)
 {
     QString time = QDateTime::currentDateTime().toString("HH:mm:ss");
     auto *item = new QListWidgetItem(QString("%1  %2").arg(time, text));
-    item->setFont(QFont("Cascadia Code", 10));
 
     if (text.startsWith(QStringLiteral("\u2192")) || text.startsWith(QString::fromUtf8("→"))) {
         item->setForeground(QColor(0x58, 0xA6, 0xFF));   // accent blue — outgoing

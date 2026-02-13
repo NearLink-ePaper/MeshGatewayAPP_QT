@@ -15,7 +15,6 @@
 QWidget {
     background-color: #0D1117;
     color: #E6EDF3;
-    font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
     font-size: 13px;
 }
 
@@ -52,7 +51,7 @@ QLabel#statusDot {
 QLabel#debugLabel {
     background-color: #161B22;
     color: #D29922;
-    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-family: monospace;
     font-size: 11px;
     padding: 10px 12px;
     border: 1px solid rgba(210, 153, 34, 0.15);
@@ -125,7 +124,7 @@ QLabel#deviceName {
 QLabel#deviceAddr {
     color: #8B949E;
     font-size: 11px;
-    font-family: "Cascadia Code", "Consolas", monospace;
+    font-family: monospace;
 }
 QLabel#rssiGood {
     color: #3FB950;
@@ -152,7 +151,7 @@ QLabel#connDeviceName {
 QLabel#connGwAddr {
     color: #3FB950;
     font-size: 12px;
-    font-family: "Cascadia Code", "Consolas", monospace;
+    font-family: monospace;
 }
 
 /* ─── Disconnect Button ────────────────────────────── */
@@ -233,7 +232,7 @@ QLabel#nodeIconLabelNormal {
 
 QLabel#nodeAddr {
     color: #E6EDF3;
-    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-family: monospace;
     font-size: 13px;
     font-weight: 600;
 }
@@ -318,7 +317,7 @@ QListWidget#logList {
     background-color: transparent;
     border: none;
     outline: none;
-    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-family: monospace;
     font-size: 11px;
 }
 QListWidget#logList::item {

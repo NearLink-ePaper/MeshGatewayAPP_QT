@@ -55,14 +55,8 @@ int main(int argc, char *argv[])
     // iOS 风格暗色主题
     a.setStyleSheet(StyleManager::loadStyleSheet());
 
-    // 全局默认字体（开启抗锯齿渲染）
-#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
-    QFont defaultFont("SF Pro Display", 13);
-#elif defined(Q_OS_WIN)
-    QFont defaultFont("Segoe UI", 10);
-#else
-    QFont defaultFont("Noto Sans", 10);
-#endif
+    // 使用系统默认字体，仅附加抗锯齿渲染
+    QFont defaultFont = a.font();
     defaultFont.setStyleStrategy(QFont::PreferAntialias);
     defaultFont.setHintingPreference(QFont::PreferFullHinting);
     a.setFont(defaultFont);
