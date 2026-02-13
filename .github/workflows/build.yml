@@ -401,116 +401,157 @@ jobs:
           path: artifact/NearLink_Mesh-x86_64.apk
 
   # ═══════════════════════════════════════════════════════════
-  #  Harmony — OpenHarmony arm64-v8a (Windows 交叉编译)
-  #  参考: https://wiki.qt.io/Qt_for_HarmonyOS/zh
+  #  HarmonyOS — OpenHarmony arm64-v8a
+  #  从源码编译 Qt 库 + 交叉编译应用
+  #  Qt 源码: https://gitcode.com/openharmony-sig/qt
+  #  参考: https://wiki.qt.io/Building_Qt_for_OpenHarmony
   # ═══════════════════════════════════════════════════════════
   # 需要在仓库 Settings → Secrets and variables → Actions → Variables 中配置:
-  #   OHOS_SDK_URL   — OHOS SDK native 包下载链接 (.zip)
-  #   QT_OHOS_URL    — 预编译 Qt 5.12.12 for OHOS 下载链接 (.zip)
-  #   MINGW_URL      — llvm-mingw 工具链下载链接 (.zip)
-  #                    默认: https://github.com/mstorsjo/llvm-mingw/releases/download/20230919/llvm-mingw-20230919-ucrt-x86_64.zip
+  #   OHOS_SDK_URL   — OHOS SDK native 包下载链接 (Linux 版 .zip)
+  #                    包内须包含 native/ 目录 (llvm/ + sysroot/)
+  # 可选变量:
+  #   QT_OHOS_REPO   — Qt for OHOS 源码仓库 (默认 gitcode.com/openharmony-sig/qt)
+  #   QT_OHOS_BRANCH — 源码分支 (默认 dev)
   HarmonyOS:
-    runs-on: windows-latest
-    if: vars.OHOS_SDK_URL != '' && vars.QT_OHOS_URL != ''
+    runs-on: ubuntu-22.04
+    if: vars.OHOS_SDK_URL != ''
+    timeout-minutes: 180
     env:
-      MINGW_DEFAULT_URL: https://github.com/mstorsjo/llvm-mingw/releases/download/20230919/llvm-mingw-20230919-ucrt-x86_64.zip
+      OHOS_ARCH: arm64-v8a
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download & extract llvm-mingw
-        shell: pwsh
+      - name: Install build dependencies
         run: |
-          $url = if ("${{ vars.MINGW_URL }}") { "${{ vars.MINGW_URL }}" } else { "$env:MINGW_DEFAULT_URL" }
-          $zip = "$env:RUNNER_TEMP\llvm-mingw.zip"
-          Write-Host "Downloading llvm-mingw from $url ..."
-          Invoke-WebRequest -Uri $url -OutFile $zip
-          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\mingw" -Force
-          # 定位 bin\mingw32-make.exe
-          $makeExe = Get-ChildItem -Path "$env:RUNNER_TEMP\mingw" -Recurse -Filter "mingw32-make.exe" | Select-Object -First 1
-          if ($makeExe) {
-            $mingwBin = $makeExe.DirectoryName
-            Write-Host "MINGW_BIN=$mingwBin"
-            echo "MINGW_BIN=$mingwBin" >> $env:GITHUB_ENV
-            echo "$mingwBin" >> $env:GITHUB_PATH
-          } else {
-            Write-Host "::error::mingw32-make.exe not found in llvm-mingw archive"
-            exit 1
-          }
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential perl python3 gperf bison flex \
+            libgl1-mesa-dev libglib2.0-dev \
+            libfontconfig1-dev libfreetype6-dev \
+            libx11-dev libx11-xcb-dev libxext-dev libxfixes-dev \
+            libxi-dev libxrender-dev libxcb1-dev \
+            libxkbcommon-dev libxkbcommon-x11-dev
 
       - name: Download & extract OHOS SDK
-        shell: pwsh
         run: |
-          $zip = "$env:RUNNER_TEMP\ohos-sdk.zip"
-          Write-Host "Downloading OHOS SDK..."
-          Invoke-WebRequest -Uri "${{ vars.OHOS_SDK_URL }}" -OutFile $zip
-          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\ohos-sdk" -Force
-          # 定位 native 目录 (包含 llvm/ 和 sysroot/)
-          $nativeDir = Get-ChildItem -Path "$env:RUNNER_TEMP\ohos-sdk" -Recurse -Directory -Filter "native" | Select-Object -First 1
-          if ($nativeDir) {
-            $sdk = $nativeDir.FullName
-            Write-Host "NATIVE_OHOS_SDK=$sdk"
-            echo "NATIVE_OHOS_SDK=$sdk" >> $env:GITHUB_ENV
-            echo "OHOS_SDK_SYSROOT=$sdk\sysroot" >> $env:GITHUB_ENV
-            echo "LLVM_INSTALL_DIR=$sdk\llvm" >> $env:GITHUB_ENV
-          } else {
-            Write-Host "::error::OHOS SDK native directory not found"
+          wget -q "${{ vars.OHOS_SDK_URL }}" -O /tmp/ohos-sdk.zip
+          unzip -q /tmp/ohos-sdk.zip -d /tmp/ohos-sdk
+
+          NATIVE_DIR=$(find /tmp/ohos-sdk -type d -name "native" | head -1)
+          if [ -z "$NATIVE_DIR" ]; then
+            echo "::error::OHOS SDK native directory not found in archive"
             exit 1
-          }
+          fi
 
-      - name: Download & extract Qt 5.12.12 for OHOS
-        shell: pwsh
+          echo "NATIVE_OHOS_SDK=$NATIVE_DIR"  >> $GITHUB_ENV
+          echo "OHOS_SDK_SYSROOT=$NATIVE_DIR/sysroot" >> $GITHUB_ENV
+          echo "LLVM_INSTALL_DIR=$NATIVE_DIR/llvm"     >> $GITHUB_ENV
+          echo "$NATIVE_DIR/llvm/bin" >> $GITHUB_PATH
+
+      # ── 编译 Qt 库 (带缓存) ──────────────────────────────
+      - name: Cache Qt OHOS library
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/qt-ohos
+          key: qt-ohos-${{ env.OHOS_ARCH }}-v1
+
+      - name: Clone Qt for OpenHarmony
+        if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
-          $zip = "$env:RUNNER_TEMP\qt-ohos.zip"
-          Write-Host "Downloading Qt for OHOS..."
-          Invoke-WebRequest -Uri "${{ vars.QT_OHOS_URL }}" -OutFile $zip
-          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\qt-ohos" -Force
-          # 定位 Qt 安装路径 (包含 bin/qmake 或 lib/)
-          $qmake = Get-ChildItem -Path "$env:RUNNER_TEMP\qt-ohos" -Recurse -Filter "qmake.exe" | Select-Object -First 1
-          if ($qmake) {
-            $qtRoot = $qmake.Directory.Parent.FullName
-          } else {
-            $libDir = Get-ChildItem -Path "$env:RUNNER_TEMP\qt-ohos" -Recurse -Directory -Filter "lib" | Select-Object -First 1
-            if ($libDir) { $qtRoot = $libDir.Parent.FullName }
-            else         { $qtRoot = "$env:RUNNER_TEMP\qt-ohos" }
-          }
-          Write-Host "QT_OHOS_DIR=$qtRoot"
-          echo "QT_OHOS_DIR=$qtRoot" >> $env:GITHUB_ENV
+          QT_REPO="${{ vars.QT_OHOS_REPO || 'https://gitcode.com/openharmony-sig/qt.git' }}"
+          QT_BRANCH="${{ vars.QT_OHOS_BRANCH || 'dev' }}"
+          echo "Cloning $QT_REPO (branch: $QT_BRANCH) ..."
+          git clone --depth 1 -b "$QT_BRANCH" "$QT_REPO" /tmp/qt-src
 
-      - name: Configure CMake (OHOS cross-compile)
-        shell: cmd
+          cd /tmp/qt-src
+          # 初始化子模块 (优先 init-repository，回退 git submodule)
+          if [ -f init-repository ]; then
+            perl init-repository --module-subset=default,-qtwebengine,-qtdoc
+          else
+            git submodule update --init --recursive --depth 1
+          fi
+
+      - name: Configure Qt for OHOS
+        if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
-          cmake -B build -G "MinGW Makefiles" ^
-            -DCMAKE_C_COMPILER=%LLVM_INSTALL_DIR%\bin\clang.exe ^
-            -DCMAKE_CXX_COMPILER=%LLVM_INSTALL_DIR%\bin\clang++.exe ^
-            -DCMAKE_SYSROOT=%OHOS_SDK_SYSROOT% ^
-            -DCMAKE_PREFIX_PATH=%QT_OHOS_DIR% ^
-            -DCMAKE_FIND_ROOT_PATH=%QT_OHOS_DIR% ^
-            -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
-            -DOHOS=ON ^
-            -DOHOS_ARCH=arm64-v8a
+          mkdir -p /tmp/qt-build && cd /tmp/qt-build
 
-      - name: Build
-        shell: cmd
-        run: mingw32-make -C build -j%NUMBER_OF_PROCESSORS%
+          # 跳过不需要的模块以加速编译 (保留 qtconnectivity 供蓝牙使用)
+          QT_SKIPS="\
+            -skip qt3d -skip qtactiveqt -skip qtandroidextras -skip qtcanvas3d \
+            -skip qtdatavis3d -skip qtdoc -skip qtdocgallery -skip qtfeedback \
+            -skip qtgamepad -skip qtgraphicaleffects -skip qtlocation \
+            -skip qtmacextras -skip qtnetworkauth -skip qtpim -skip qtpurchasing \
+            -skip qtqa -skip qtremoteobjects -skip qtrepotools -skip qtscript \
+            -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport \
+            -skip qtspeech -skip qtsystems -skip qttools -skip qttranslations \
+            -skip qtvirtualkeyboard -skip qtwayland -skip qtwebchannel \
+            -skip qtwebengine -skip qtwebglplugin -skip qtwebsockets \
+            -skip qtwebview -skip qtwinextras -skip qtx11extras -skip doc"
+
+          /tmp/qt-src/configure \
+            -v \
+            -xplatform ohos-clang \
+            -prefix /data/storage/el1/bundle/libs/arm64 \
+            -extprefix /opt/qt-ohos \
+            -opensource -confirm-license \
+            -release \
+            -no-use-gold-linker \
+            -no-gcc-sysroot \
+            -ohos-arch ${{ env.OHOS_ARCH }} \
+            -opengles3 \
+            $QT_SKIPS \
+            -no-dbus \
+            -c++std c++14 \
+            -nomake examples \
+            -nomake tests
+
+      - name: Build & Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          cd /tmp/qt-build
+          make -j$(nproc)
+          sudo make install
+
+      # ── 编译应用 ────────────────────────────────────────────
+      - name: Configure & Build App
+        run: |
+          cmake -B build \
+            -DCMAKE_C_COMPILER=$LLVM_INSTALL_DIR/bin/clang \
+            -DCMAKE_CXX_COMPILER=$LLVM_INSTALL_DIR/bin/clang++ \
+            -DCMAKE_SYSROOT=$OHOS_SDK_SYSROOT \
+            -DCMAKE_PREFIX_PATH=/opt/qt-ohos \
+            -DCMAKE_FIND_ROOT_PATH=/opt/qt-ohos \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DOHOS=ON \
+            -DOHOS_ARCH=${{ env.OHOS_ARCH }}
+
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
       - name: Package
-        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          $so = Get-ChildItem -Path build -Recurse -Filter "libNearLink_Mesh.so" | Select-Object -First 1
-          if ($so) {
-            Copy-Item $so.FullName -Destination artifact\
-            Write-Host "Packaged: $($so.FullName)"
-          } else {
-            Write-Host "::error::libNearLink_Mesh.so not found"
-            exit 1
-          }
+          mkdir -p artifact
+
+          # 应用共享库
+          SO=$(find build -name "libNearLink_Mesh.so" | head -1)
+          if [ -n "$SO" ]; then
+            cp "$SO" artifact/
+          else
+            echo "::error::libNearLink_Mesh.so not found" && exit 1
+          fi
+
+          # 打包 Qt 运行时库 (部署到 DevEco 工程时需要)
+          for lib in libQt5Core.so libQt5Gui.so libQt5Widgets.so \
+                     libQt5Bluetooth.so libQt5Network.so; do
+            [ -f "/opt/qt-ohos/lib/$lib" ] && cp "/opt/qt-ohos/lib/$lib" artifact/
+          done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: NearLink_Mesh-harmony-arm64
-          path: artifact/libNearLink_Mesh.so
+          path: artifact/
 
   # ═══════════════════════════════════════════════════════════
   #  Release — 自动发布 (仅 tag 触发)
