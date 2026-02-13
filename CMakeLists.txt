@@ -32,6 +32,25 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/utils
 )
 
+# ─── 翻译文件编译 (.ts → .qm) ────────────────────────────
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS LinguistTools QUIET)
+set(TS_FILE ${CMAKE_CURRENT_SOURCE_DIR}/Qt/resource/translation/NearLink_Mesh_zh_CN.ts)
+set(QM_FILE ${CMAKE_CURRENT_SOURCE_DIR}/Qt/resource/translation/NearLink_Mesh_zh_CN.qm)
+
+if(Qt${QT_VERSION_MAJOR}LinguistTools_FOUND)
+    # 使用 Qt 自带的 lrelease 编译翻译文件
+    add_custom_command(
+        OUTPUT  ${QM_FILE}
+        COMMAND Qt${QT_VERSION_MAJOR}::lrelease ${TS_FILE} -qm ${QM_FILE}
+        DEPENDS ${TS_FILE}
+        COMMENT "Compiling translation: ${TS_FILE} -> .qm"
+        VERBATIM
+    )
+    add_custom_target(translations ALL DEPENDS ${QM_FILE})
+else()
+    message(WARNING "Qt LinguistTools not found, skipping .ts -> .qm compilation. Pre-compiled .qm required.")
+endif()
+
 # ─── 资源文件 ────────────────────────────────────────────
 set(RESOURCE_FILES
     Qt/resource/resources.qrc
@@ -116,6 +135,11 @@ else()
         )
     endif()
 
+endif()
+
+# ─── 翻译依赖（确保 .qm 在 rcc 之前生成）─────────────────
+if(TARGET translations)
+    add_dependencies(NearLink_Mesh translations)
 endif()
 
 # ─── 链接库 ──────────────────────────────────────────────

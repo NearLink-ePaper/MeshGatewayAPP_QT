@@ -27,7 +27,8 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Configure CMake
         run: >
@@ -76,7 +77,8 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Configure & Build
         run: |
@@ -129,7 +131,8 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Configure & Build (Universal)
         run: |
@@ -166,7 +169,8 @@ jobs:
           version: ${{ env.QT_VERSION }}
           host: mac
           target: ios
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Install Qt (Host tools)
         uses: jurplel/install-qt-action@v4
@@ -175,6 +179,8 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
+          modules: qttranslations
+          cache: true
           set-env: false
 
       - name: Configure & Build
@@ -234,7 +240,8 @@ jobs:
           host: linux
           target: android
           arch: android_arm64_v8a
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Install Qt (Host tools)
         uses: jurplel/install-qt-action@v4
@@ -243,7 +250,18 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          modules: qttranslations
+          cache: true
           set-env: false
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-android-arm64-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: gradle-android-arm64-
 
       - name: Configure & Build
         env:
@@ -304,7 +322,8 @@ jobs:
           host: linux
           target: android
           arch: android_x86_64
-          modules: qtconnectivity
+          modules: qtconnectivity qttranslations
+          cache: true
 
       - name: Install Qt (Host tools)
         uses: jurplel/install-qt-action@v4
@@ -313,7 +332,18 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
+          modules: qttranslations
+          cache: true
           set-env: false
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-android-x86_64-${{ hashFiles('**/*.gradle*') }}
+          restore-keys: gradle-android-x86_64-
 
       - name: Configure & Build
         env:
