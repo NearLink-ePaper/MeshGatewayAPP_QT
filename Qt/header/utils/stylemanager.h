@@ -6,6 +6,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QStyledItemDelegate>
 #include <QColor>
 
 /**
@@ -126,6 +127,24 @@ private:
     QColor m_focusBorder = Qt::transparent;
     int    m_radius      = 0;
     int    m_borderW     = 0;
+};
+
+/**
+ * 抗锯齿列表项代理 — 手动绘制圆角背景，替代 QSS ::item border-radius
+ */
+class AAItemDelegate : public QStyledItemDelegate {
+    Q_OBJECT
+public:
+    explicit AAItemDelegate(int radius, const QColor &bg, const QColor &border,
+                            int borderWidth = 1, QObject *parent = nullptr);
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override;
+
+private:
+    int    m_radius;
+    QColor m_bg;
+    QColor m_border;
+    int    m_borderW;
 };
 
 #endif // STYLEMANAGER_H

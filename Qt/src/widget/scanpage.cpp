@@ -29,6 +29,8 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     m_deviceList->setSpacing(4);
     m_deviceList->setSelectionMode(QAbstractItemView::NoSelection);
     m_deviceList->setVisible(false);
+    m_deviceList->setItemDelegate(new AAItemDelegate(
+        12, QColor(0x16, 0x1B, 0x22), QColor(240, 246, 252, 15), 1, m_deviceList));
     connect(m_deviceList, &QListWidget::itemClicked, this, &ScanPage::onItemClicked);
     mainLayout->addWidget(m_deviceList, 1);
 

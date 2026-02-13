@@ -95,15 +95,10 @@ QListWidget#deviceList {
     outline: none;
 }
 QListWidget#deviceList::item {
-    background-color: #161B22;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 12px;
+    background-color: transparent;
+    border: none;
     margin: 3px 0px;
     padding: 0px;
-}
-QListWidget#deviceList::item:hover {
-    background-color: #1C2128;
-    border-color: rgba(240, 246, 252, 0.12);
 }
 
 /* ─── Device Card ──────────────────────────────────── */

@@ -119,6 +119,45 @@ void AALineEdit::paintEvent(QPaintEvent *event)
     QLineEdit::paintEvent(event);
 }
 
+// ─── AAItemDelegate ──────────────────────────────────────
+AAItemDelegate::AAItemDelegate(int radius, const QColor &bg, const QColor &border,
+                               int borderWidth, QObject *parent)
+    : QStyledItemDelegate(parent), m_radius(radius), m_bg(bg), m_border(border), m_borderW(borderWidth)
+{}
+
+void AAItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
+                           const QModelIndex &index) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    const qreal hw = m_borderW / 2.0;
+    QRectF r = QRectF(option.rect).adjusted(hw, hw, -hw, -hw);
+
+    QPainterPath path;
+    path.addRoundedRect(r, m_radius, m_radius);
+
+    // 背景
+    QColor bg = m_bg;
+    if (option.state & QStyle::State_MouseOver)
+        bg = bg.lighter(112);
+    if (bg.alpha() > 0)
+        painter->fillPath(path, bg);
+
+    // 边框
+    if (m_borderW > 0 && m_border.alpha() > 0) {
+        QColor bc = m_border;
+        if (option.state & QStyle::State_MouseOver)
+            bc.setAlphaF(qMin(bc.alphaF() * 2.0, 1.0));
+        painter->setPen(QPen(bc, m_borderW));
+        painter->drawPath(path);
+    }
+
+    painter->restore();
+
+    // itemWidget 由 Qt 自动绘制在 item 上方，此处无需绘制内容
+}
+
 QString StyleManager::darkThemeStyleSheet()
 {
     return QStringLiteral(R"(
@@ -133,7 +172,7 @@ AAButton#scanButton { background-color:transparent; border:none; color:#FFF; fon
 AAButton#scanButton:disabled { color:#484F58; }
 QLabel#hintLabel { color:#484F58; font-size:13px; padding:48px 24px; }
 QListWidget#deviceList { background-color:transparent; border:none; }
-QListWidget#deviceList::item { background-color:#161B22; border:1px solid rgba(240,246,252,0.06); border-radius:12px; margin:3px 0; }
+QListWidget#deviceList::item { background-color:transparent; border:none; margin:3px 0; }
 AAWidget#deviceInfoCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#333FB950; qproperty-borderRadius:12; qproperty-borderWidth:1; }
 AAButton#disconnectBtn { background-color:transparent; border:none; color:#F85149; padding:6px 16px; qproperty-bgColor:#1AF85149; qproperty-borderColor:#40F85149; qproperty-borderRadius:8; qproperty-borderWidth:1; }
 AAButton#queryTopoBtn { background-color:transparent; border:none; color:#58A6FF; padding:10px; font-weight:600; qproperty-bgColor:#21262D; qproperty-borderColor:#4058A6FF; qproperty-borderRadius:10; qproperty-borderWidth:1; }
