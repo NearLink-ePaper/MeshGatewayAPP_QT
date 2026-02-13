@@ -10,9 +10,11 @@
 
 int main(int argc, char *argv[])
 {
-    // 高分屏抗锯齿：使用精确缩放因子，避免取整导致的锯齿
+    // 高分屏抗锯齿：移动端使用精确缩放因子，桌面端保持默认取整策略
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
 
     QApplication a(argc, argv);
     a.setOrganizationName("wellwhz");

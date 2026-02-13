@@ -260,8 +260,8 @@ void ConnectedPage::onBroadcastClicked()
     QString text = m_broadcastInput->text().trimmed();
     if (text.isEmpty()) return;
 
-    // 有选中的非网关节点 → 单播；否则 → 广播
-    if (m_selectedNodeIndex > 0 && m_selectedNodeIndex < m_nodes.size()) {
+    // 有选中节点 → 单播；否则 → 广播
+    if (m_selectedNodeIndex >= 0 && m_selectedNodeIndex < m_nodes.size()) {
         const MeshNode &node = m_nodes[m_selectedNodeIndex];
         m_ble->sendToNode(node.addr, text.toUtf8());
         addLog(QString::fromUtf8("\xe2\x86\x92 [0x%1] %2")
@@ -275,7 +275,7 @@ void ConnectedPage::onBroadcastClicked()
 
 void ConnectedPage::updateSendPlaceholder()
 {
-    if (m_selectedNodeIndex > 0 && m_selectedNodeIndex < m_nodes.size()) {
+    if (m_selectedNodeIndex >= 0 && m_selectedNodeIndex < m_nodes.size()) {
         QString addr = MeshProtocol::addrToHex4(m_nodes[m_selectedNodeIndex].addr);
         m_broadcastInput->setPlaceholderText(tr("Send to 0x%1...").arg(addr));
     } else {
