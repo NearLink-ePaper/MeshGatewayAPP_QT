@@ -534,7 +534,18 @@ jobs:
             echo "Copied qtohextras -> /tmp/qt-src/qtohextras"
           fi
 
-          # 4) 验证 oh-clang mkspec (补丁创建的是 oh-clang 不是 ohos-clang)
+          # 4) 补丁后修复: qohwindownode.cpp:245 多余 #endif
+          WNODE=/tmp/qt-src/qtbase/src/plugins/platforms/openharmony/qohwindownode.cpp
+          if [ -f "$WNODE" ]; then
+            echo "=== qohwindownode.cpp around line 245 (before fix) ==="
+            sed -n '240,250p' "$WNODE"
+            # 删除第245行的孤立 #endif
+            sed -i '245{/^#endif/d}' "$WNODE"
+            echo "=== after fix ==="
+            sed -n '240,250p' "$WNODE"
+          fi
+
+          # 5) 验证 oh-clang mkspec (补丁创建的是 oh-clang 不是 ohos-clang)
           echo "=== Verification ==="
           if [ -d /tmp/qt-src/qtbase/mkspecs/oh-clang ]; then
             echo "OK: oh-clang mkspec found"
@@ -638,7 +649,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ Windows, Linux, macOS, iOS, Android-arm64, Android-x86_64 ]
+    needs: [ Windows, Linux, macOS, iOS, Android-arm64, Android-x86_64, HarmonyOS ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
