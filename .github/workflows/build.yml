@@ -15,7 +15,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  Windows — MSVC x64
   # ═══════════════════════════════════════════════════════════
-  windows:
+  Windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +60,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  Linux — x64
   # ═══════════════════════════════════════════════════════════
-  linux:
+  Linux:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -124,7 +124,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  macOS — Universal (Intel + Apple Silicon)
   # ═══════════════════════════════════════════════════════════
-  macos:
+  macOS:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +176,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  iOS — arm64
   # ═══════════════════════════════════════════════════════════
-  ios:
+  iOS:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -247,7 +247,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  Android — arm64-v8a
   # ═══════════════════════════════════════════════════════════
-  android-arm64:
+  Android-arm64:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -325,7 +325,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   #  Android — x86_64 (模拟器)
   # ═══════════════════════════════════════════════════════════
-  android-x86_64:
+  Android-x86_64:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -409,7 +409,7 @@ jobs:
   #   QT_OHOS_URL    — 预编译 Qt 5.12.12 for OHOS 下载链接 (.zip)
   #   MINGW_URL      — llvm-mingw 工具链下载链接 (.zip)
   #                    默认: https://github.com/mstorsjo/llvm-mingw/releases/download/20230919/llvm-mingw-20230919-ucrt-x86_64.zip
-  harmony:
+  HarmonyOS:
     runs-on: windows-latest
     if: vars.OHOS_SDK_URL != '' && vars.QT_OHOS_URL != ''
     env:
@@ -517,7 +517,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ windows, linux, macos, ios, android-arm64, android-x86_64 ]
+    needs: [ Windows, Linux, macOS, iOS, Android-arm64, Android-x86_64 ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
