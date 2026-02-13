@@ -483,17 +483,29 @@ jobs:
           # 2) 安装 Python 依赖
           pip install -r /tmp/build-qt/requirements.txt
 
-          # 2.5) 补充 skip 模块 (qtpdf 交叉编译失败)
+          # 2.5) 只保留 qtbase + qtconnectivity, 跳过所有其他模块
           python3 -c "
           import json
           with open('/tmp/build-qt/configure.json','r') as f: cfg=json.load(f)
+          # 应用只需要: qtbase(Core/Gui/Widgets/Network) + qtconnectivity(Bluetooth)
+          skip_all = [
+            'qt3d','qtactiveqt','qtandroidextras','qtcanvas3d','qtcharts',
+            'qtdatavis3d','qtdeclarative','qtdoc','qtfeedback','qtgamepad',
+            'qtgraphicaleffects','qtimageformats','qtlocation','qtlottie',
+            'qtmacextras','qtmultimedia','qtnetworkauth','qtpdf','qtpim',
+            'qtpurchasing','qtqa','qtquickcontrols','qtquickcontrols2',
+            'qtremoteobjects','qtrepotools','qtscript','qtscxml',
+            'qtsensors','qtserialbus','qtserialport','qtspeech',
+            'qtsystems','qtsvg','qttools','qttranslations',
+            'qtvirtualkeyboard','qtwayland','qtwebchannel','qtwebengine',
+            'qtwebglplugin','qtwebsockets','qtwebview','qtwinextras',
+            'qtx11extras','qtxmlpatterns'
+          ]
           for tag in ['v5.15.12-lts-lgpl','v5.15.17-lts-lgpl']:
               if tag in cfg.get('qt5-config',{}):
-                  skips=cfg['qt5-config'][tag].setdefault('-skip',[])
-                  for m in ['qtpdf','qtwebengine']:
-                      if m not in skips: skips.append(m)
+                  cfg['qt5-config'][tag]['-skip'] = skip_all
           with open('/tmp/build-qt/configure.json','w') as f: json.dump(cfg,f,indent=4)
-          print('Updated skip list:', cfg['qt5-config'].get('v5.15.12-lts-lgpl',{}).get('-skip'))
+          print('Skip list set to', len(skip_all), 'modules')
           "
 
           # 3) 创建 configure.json.user (CI 非交互模式)
