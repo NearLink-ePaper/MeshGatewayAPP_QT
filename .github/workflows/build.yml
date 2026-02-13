@@ -27,7 +27,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Configure CMake
@@ -77,7 +77,7 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Configure & Build
@@ -131,7 +131,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Configure & Build (Universal)
@@ -169,7 +169,7 @@ jobs:
           version: ${{ env.QT_VERSION }}
           host: mac
           target: ios
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Install Qt (Host tools)
@@ -179,7 +179,6 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
-          modules: qttranslations
           cache: true
           set-env: false
 
@@ -240,7 +239,7 @@ jobs:
           host: linux
           target: android
           arch: android_arm64_v8a
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Install Qt (Host tools)
@@ -250,7 +249,6 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qttranslations
           cache: true
           set-env: false
 
@@ -322,7 +320,7 @@ jobs:
           host: linux
           target: android
           arch: android_x86_64
-          modules: qtconnectivity qttranslations
+          modules: qtconnectivity
           cache: true
 
       - name: Install Qt (Host tools)
@@ -332,7 +330,6 @@ jobs:
           host: linux
           target: desktop
           arch: linux_gcc_64
-          modules: qttranslations
           cache: true
           set-env: false
 
