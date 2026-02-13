@@ -464,146 +464,67 @@ jobs:
           echo "LLVM_INSTALL_DIR=/opt/ohos-sdk/native/llvm"      >> $GITHUB_ENV
           echo "/opt/ohos-sdk/native/llvm/bin" >> $GITHUB_PATH
 
-      # ── 编译 Qt 库 (带缓存) ──────────────────────────────
-      # 流程: 1) 克隆官方 Qt 5.15 源码  2) 应用 OpenHarmony 补丁  3) 编译安装
+      # ── 编译 Qt 库 (使用 build-qt 一键脚本, 带缓存) ─────
       - name: Cache Qt OHOS library
         id: qt-cache
         uses: actions/cache@v4
         with:
           path: /opt/qt-ohos
-          key: qt-ohos-${{ env.OHOS_ARCH }}-5.15.17-v2
+          key: qt-ohos-${{ env.OHOS_ARCH }}-5.15.17-buildqt-v1
 
-      - name: Clone Qt 5.15 source
+      - name: Build Qt for OHOS (via build-qt)
         if: steps.qt-cache.outputs.cache-hit != 'true'
+        env:
+          OHOS_SDK_PATH: /opt/ohos-sdk
         run: |
-          echo "Cloning Qt 5.15.17 from code.qt.io ..."
-          git clone --depth 1 --branch v5.15.17-lts-lgpl \
-            https://code.qt.io/qt/qt5.git /tmp/qt-src
+          # 1) 克隆 build-qt 脚本仓库
+          git clone --depth 1 https://github.com/liys-online/build-qt.git /tmp/build-qt
 
-          cd /tmp/qt-src
-          # 只初始化需要的子模块
-          for module in qtbase qtconnectivity qtdeclarative qtquickcontrols qtmultimedia qtsensors; do
-            git submodule init $module
-          done
-          git submodule update --depth 1
+          # 2) 安装 Python 依赖
+          pip install -r /tmp/build-qt/requirements.txt
 
-      - name: Apply OpenHarmony patches
-        if: steps.qt-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone --depth 1 https://gitcode.com/openharmony-sig/qt.git /tmp/qt-patches
+          # 3) 创建 configure.json.user (CI 非交互模式)
+          JOBS=$(nproc)
+          cat > /tmp/build-qt/configure.json.user << EOCFG
+          {
+            "config": {
+              "working_dir": "/tmp/build-qt/work",
+              "ohos_sdk": "/opt/ohos-sdk",
+              "ohos_version": 15,
+              "build_type": "release",
+              "build_ohos_abi": "arm64-v8a",
+              "build_qt_tag": "v5.15.17-lts-lgpl",
+              "build_ohqt_tag": "master",
+              "clone_depth": 1,
+              "jobs": $JOBS,
+              "verbose": false
+            }
+          }
+          EOCFG
 
-          PATCH_VER=v5.15.17
-          PATCH_DIR=/tmp/qt-patches/patch/$PATCH_VER
-          if [ ! -d "$PATCH_DIR" ]; then
-            echo "::warning::$PATCH_VER not found, trying v5.15.12"
-            PATCH_VER=v5.15.12
-            PATCH_DIR=/tmp/qt-patches/patch/$PATCH_VER
-          fi
+          echo "=== configure.json.user ==="
+          cat /tmp/build-qt/configure.json.user
 
-          echo "=== Patches ($PATCH_VER) ==="
-          ls -la "$PATCH_DIR"
+          # 4) 初始化: 克隆 Qt 源码 + 应用补丁
+          cd /tmp/build-qt
+          python build-qt-ohos.py --init --use_github
 
-          # 1) root.patch → 超级仓库根目录
-          if [ -f "$PATCH_DIR/root.patch" ]; then
-            echo "Applying root.patch to /tmp/qt-src"
-            cd /tmp/qt-src
-            git apply "$PATCH_DIR/root.patch" || echo "::warning::root.patch failed"
-          fi
+          # 5) 构建: configure + build + install
+          python build-qt-ohos.py --exe_stage all --use_github
 
-          # 2) 各模块 .patch → 对应子模块目录
-          for module in qtbase qtconnectivity qtdeclarative qtquickcontrols qtmultimedia qtsensors; do
-            if [ -f "$PATCH_DIR/$module.patch" ]; then
-              echo "Applying $module.patch to /tmp/qt-src/$module"
-              cd /tmp/qt-src/$module
-              git apply "$PATCH_DIR/$module.patch" || echo "::warning::$module.patch failed"
-            else
-              echo "No patch file for $module, skipping"
-            fi
-          done
-
-          # 3) qtohextras — 额外模块，含 mkspec 和 OHOS 插件
-          if [ -d /tmp/qt-patches/patch/qtohextras ]; then
-            echo "=== qtohextras tree ==="
-            find /tmp/qt-patches/patch/qtohextras -maxdepth 3 | head -60
-
-            echo "=== qmake.conf files in qtohextras ==="
-            find /tmp/qt-patches/patch/qtohextras -name "qmake.conf" | head -10
-
-            # 复制整个 qtohextras 模块到 Qt 源码树
-            cp -r /tmp/qt-patches/patch/qtohextras /tmp/qt-src/qtohextras
-            echo "Copied qtohextras -> /tmp/qt-src/qtohextras"
-          fi
-
-          # 4) 补丁后修复: qohwindownode.cpp:245 多余 #endif
-          WNODE=/tmp/qt-src/qtbase/src/plugins/platforms/openharmony/qohwindownode.cpp
-          if [ -f "$WNODE" ]; then
-            echo "=== qohwindownode.cpp around line 245 (before fix) ==="
-            sed -n '240,250p' "$WNODE"
-            # 删除第245行的孤立 #endif
-            sed -i '245{/^#endif/d}' "$WNODE"
-            echo "=== after fix ==="
-            sed -n '240,250p' "$WNODE"
-          fi
-
-          # 5) 验证 oh-clang mkspec (补丁创建的是 oh-clang 不是 ohos-clang)
-          echo "=== Verification ==="
-          if [ -d /tmp/qt-src/qtbase/mkspecs/oh-clang ]; then
-            echo "OK: oh-clang mkspec found"
-            ls /tmp/qt-src/qtbase/mkspecs/oh-clang/
-          else
-            echo "::error::oh-clang mkspec not found after patching"
-            echo "mkspecs containing 'oh':"
-            ls /tmp/qt-src/qtbase/mkspecs/ | grep -i oh || echo "none"
+          # 6) 复制到缓存路径
+          QT_OUTPUT=$(find /tmp/build-qt/work/output -maxdepth 1 -type d -name "Qt5.15*" | head -1)
+          if [ -z "$QT_OUTPUT" ]; then
+            echo "::error::Qt build output not found"
+            ls -la /tmp/build-qt/work/output/ 2>/dev/null || echo "output dir missing"
             exit 1
           fi
+          echo "Qt installed at: $QT_OUTPUT"
+          sudo mkdir -p /opt/qt-ohos
+          sudo cp -a "$QT_OUTPUT"/. /opt/qt-ohos/
 
-          rm -rf /tmp/qt-patches
-
-      - name: Configure Qt for OHOS
-        if: steps.qt-cache.outputs.cache-hit != 'true'
-        env:
-          OHOS_SDK_PATH: /opt/ohos-sdk
-        run: |
-          mkdir -p /tmp/qt-build && cd /tmp/qt-build
-
-          QT_SKIPS="\
-            -skip qt3d -skip qtactiveqt -skip qtandroidextras -skip qtcanvas3d \
-            -skip qtdatavis3d -skip qtdoc -skip qtdocgallery -skip qtfeedback \
-            -skip qtgamepad -skip qtgraphicaleffects -skip qtlocation \
-            -skip qtmacextras -skip qtnetworkauth -skip qtpim -skip qtpurchasing \
-            -skip qtqa -skip qtremoteobjects -skip qtrepotools -skip qtscript \
-            -skip qtscxml -skip qtsensors -skip qtserialbus -skip qtserialport \
-            -skip qtspeech -skip qtsystems -skip qttools -skip qttranslations \
-            -skip qtvirtualkeyboard -skip qtwayland -skip qtwebchannel \
-            -skip qtwebengine -skip qtwebglplugin -skip qtwebsockets \
-            -skip qtwebview -skip qtwinextras -skip qtx11extras -skip doc"
-
-          /tmp/qt-src/configure \
-            -v \
-            -xplatform oh-clang \
-            -device-option OHOS_ARCH=arm64-v8a \
-            -prefix /data/storage/el1/bundle/libs/arm64 \
-            -extprefix /opt/qt-ohos \
-            -opensource -confirm-license \
-            -release \
-            -no-use-gold-linker \
-            -no-gcc-sysroot \
-            -opengles3 \
-            $QT_SKIPS \
-            -no-dbus \
-            -c++std c++17 \
-            -nomake examples \
-            -nomake tests
-
-      - name: Build & Install Qt
-        if: steps.qt-cache.outputs.cache-hit != 'true'
-        env:
-          OHOS_ARCH: arm64-v8a
-          OHOS_SDK_PATH: /opt/ohos-sdk
-        run: |
-          cd /tmp/qt-build
-          make -j$(nproc)
-          sudo make install
+          # 清理构建目录 (节省磁盘)
+          rm -rf /tmp/build-qt
 
       # ── 编译应用 ────────────────────────────────────────────
       - name: Configure & Build App
