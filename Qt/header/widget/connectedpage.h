@@ -8,8 +8,8 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QGridLayout>
 #include <QScrollArea>
+#include <QScroller>
 
 #include "blemanager.h"
 #include "meshprotocol.h"
@@ -28,7 +28,7 @@ public:
 signals:
     void clicked(const MeshNode &node);
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
 private:
     MeshNode m_node;
 };
@@ -60,7 +60,8 @@ private slots:
     void onClearLogClicked();
 
 private:
-    void rebuildNodeGrid();
+    void rebuildNodeList();
+    void updateSendPlaceholder();
 
     BleManager        *m_ble;
 
@@ -69,14 +70,16 @@ private:
     QLabel            *m_gwAddrLabel;
     QPushButton       *m_disconnectBtn;
     QPushButton       *m_queryTopoBtn;
-    QWidget           *m_nodeGridContainer;
-    QGridLayout       *m_nodeGrid;
+    QVBoxLayout       *m_nodeListLayout;
+    QWidget           *m_nodeListContainer;
+    QScrollArea       *m_nodeScroll;
     QLineEdit         *m_broadcastInput;
     QPushButton       *m_broadcastBtn;
     QListWidget       *m_logList;
 
     quint16            m_gwAddr = 0;
     QList<MeshNode>    m_nodes;
+    int                m_selectedNodeIndex = -1;
 };
 
 #endif // CONNECTEDPAGE_H

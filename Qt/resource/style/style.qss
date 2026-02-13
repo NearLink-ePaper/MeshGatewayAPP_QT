@@ -202,6 +202,15 @@ QWidget#nodeCard:hover {
     background-color: #1C2128;
     border-color: rgba(240, 246, 252, 0.12);
 }
+QWidget#nodeCardSelected {
+    background-color: #1C2128;
+    border: 1px solid rgba(88, 166, 255, 0.5);
+    border-radius: 10px;
+}
+QWidget#nodeCardSelected:hover {
+    background-color: #21262D;
+    border-color: rgba(88, 166, 255, 0.7);
+}
 
 QWidget#nodeIconGateway {
     background-color: rgba(63, 185, 80, 0.12);

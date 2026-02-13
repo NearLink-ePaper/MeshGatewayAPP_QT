@@ -47,6 +47,10 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     m_countdownTimer.setInterval(1000);
     connect(&m_countdownTimer, &QTimer::timeout, this, &ScanPage::onCountdownTick);
 
+    // RSSI 刷新定时器 (500ms)
+    m_rssiTimer.setInterval(500);
+    connect(&m_rssiTimer, &QTimer::timeout, this, &ScanPage::refreshDeviceList);
+
     // 信号连接
     connect(m_ble, &BleManager::connStateChanged, this, &ScanPage::onConnStateChanged);
     connect(m_ble, &BleManager::scannedDevicesChanged, this, &ScanPage::onDevicesChanged);
@@ -68,8 +72,10 @@ void ScanPage::onConnStateChanged(BleManager::ConnState state)
         m_remainingSec = 12;
         m_debugLabel->setText(tr("Scanning... (%1s)").arg(m_remainingSec));
         m_countdownTimer.start();
+        m_rssiTimer.start();
     } else {
         m_countdownTimer.stop();
+        m_rssiTimer.stop();
     }
 }
 

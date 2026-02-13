@@ -25,7 +25,6 @@ public:
 private slots:
     void onConnStateChanged(BleManager::ConnState state);
     void onDeviceSelected(int index);
-    void onNodeClicked(const MeshNode &node);
 
 private:
     void setupTopBar();

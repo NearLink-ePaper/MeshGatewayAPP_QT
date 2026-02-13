@@ -33,7 +33,6 @@ MainWindow::MainWindow(QWidget *parent)
     // 信号连接
     connect(m_ble, &BleManager::connStateChanged, this, &MainWindow::onConnStateChanged);
     connect(m_scanPage, &ScanPage::deviceSelected, this, &MainWindow::onDeviceSelected);
-    connect(m_connectedPage, &ConnectedPage::nodeClicked, this, &MainWindow::onNodeClicked);
 
     // 连接后自动查询拓扑（延迟 800ms 等 CCCD 订阅完成）
     m_topoQueryTimer.setSingleShot(true);
@@ -126,19 +125,6 @@ void MainWindow::onDeviceSelected(int index)
     m_ble->connectToDevice(index);
 }
 
-void MainWindow::onNodeClicked(const MeshNode &node)
-{
-    SendDialog dlg(node, this);
-    if (dlg.exec() == QDialog::Accepted) {
-        QString text = dlg.text();
-        if (!text.isEmpty()) {
-            m_ble->sendToNode(node.addr, text.toUtf8());
-            m_connectedPage->addLog(
-                QString::fromUtf8("\xe2\x86\x92 [0x%1] %2")
-                    .arg(MeshProtocol::addrToHex4(node.addr), text));
-        }
-    }
-}
 
 void MainWindow::updateStatusDot(BleManager::ConnState state)
 {

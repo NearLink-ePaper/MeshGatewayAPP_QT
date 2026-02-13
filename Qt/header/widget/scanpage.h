@@ -41,6 +41,7 @@ private:
     QListWidget *m_deviceList;
     QLabel      *m_hintLabel;
     QTimer       m_countdownTimer;
+    QTimer       m_rssiTimer;
     int          m_remainingSec = 0;
 };
 

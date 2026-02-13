@@ -30,6 +30,18 @@ BleManager::BleManager(QObject *parent)
             this, &BleManager::onScanError);
 #endif
 
+    connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated,
+            this, [this](const QBluetoothDeviceInfo &info, QBluetoothDeviceDiscoveryAgent::UpdatedFields fields) {
+        if (fields.testFlag(QBluetoothDeviceDiscoveryAgent::RssiField)) {
+            for (int i = 0; i < m_scannedDevices.size(); ++i) {
+                if (m_scannedDevices[i].name == info.name()) {
+                    m_scannedDevices[i].rssi = info.rssi();
+                    break;
+                }
+            }
+        }
+    });
+
     m_scanTimer.setSingleShot(true);
     connect(&m_scanTimer, &QTimer::timeout, this, &BleManager::stopScan);
 

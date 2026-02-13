@@ -4,6 +4,7 @@
 #include <QFrame>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <QStyle>
 
 // ─── NodeCardWidget ─────────────────────────────────────
 
@@ -58,12 +59,12 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
     layout->addWidget(sendIcon);
 }
 
-void NodeCardWidget::mousePressEvent(QMouseEvent *event)
+void NodeCardWidget::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         emit clicked(m_node);
     }
-    QWidget::mousePressEvent(event);
+    QWidget::mouseReleaseEvent(event);
 }
 
 // ─── ConnectedPage ──────────────────────────────────────
@@ -112,20 +113,25 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     connect(m_queryTopoBtn, &QPushButton::clicked, this, &ConnectedPage::onQueryTopoClicked);
     mainLayout->addWidget(m_queryTopoBtn);
 
-    // 节点网格区域
-    auto *nodeScroll = new QScrollArea(this);
-    nodeScroll->setWidgetResizable(true);
-    nodeScroll->setFrameShape(QFrame::NoFrame);
-    nodeScroll->setObjectName("nodeScrollArea");
-    nodeScroll->setMaximumHeight(240);
+    // 节点列表区域（垂直滚动，支持触摸滑动选择）
+    m_nodeScroll = new QScrollArea(this);
+    m_nodeScroll->setWidgetResizable(true);
+    m_nodeScroll->setFrameShape(QFrame::NoFrame);
+    m_nodeScroll->setObjectName("nodeScrollArea");
+    m_nodeScroll->setMaximumHeight(240);
+    m_nodeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    m_nodeGridContainer = new QWidget();
-    m_nodeGridContainer->setObjectName("nodeGridContainer");
-    m_nodeGrid = new QGridLayout(m_nodeGridContainer);
-    m_nodeGrid->setSpacing(6);
-    m_nodeGrid->setContentsMargins(0, 0, 0, 0);
-    nodeScroll->setWidget(m_nodeGridContainer);
-    mainLayout->addWidget(nodeScroll);
+    m_nodeListContainer = new QWidget();
+    m_nodeListContainer->setObjectName("nodeGridContainer");
+    m_nodeListLayout = new QVBoxLayout(m_nodeListContainer);
+    m_nodeListLayout->setSpacing(6);
+    m_nodeListLayout->setContentsMargins(0, 0, 0, 0);
+    m_nodeScroll->setWidget(m_nodeListContainer);
+
+    // 移动端触摸滚动
+    QScroller::grabGesture(m_nodeScroll->viewport(), QScroller::LeftMouseButtonGesture);
+
+    mainLayout->addWidget(m_nodeScroll);
 
     // 广播输入区域
     auto *broadcastCard = new QWidget(this);
@@ -222,7 +228,7 @@ void ConnectedPage::onMessageReceived(const UpstreamMessage &msg)
         m_nodes.clear();
         m_nodes.append(MeshNode(msg.gatewayAddr, 0));
         m_nodes.append(msg.nodes);
-        rebuildNodeGrid();
+        rebuildNodeList();
 
         addLog(tr("Topology: Gateway 0x%1, %2 node(s)").arg(gwHex).arg(msg.nodes.size()));
         break;
@@ -254,9 +260,27 @@ void ConnectedPage::onBroadcastClicked()
     QString text = m_broadcastInput->text().trimmed();
     if (text.isEmpty()) return;
 
-    m_ble->broadcast(text.toUtf8());
-    addLog(QString::fromUtf8("\xe2\x86\x92 [") + tr("Broadcast") + "] " + text);
+    // 有选中的非网关节点 → 单播；否则 → 广播
+    if (m_selectedNodeIndex > 0 && m_selectedNodeIndex < m_nodes.size()) {
+        const MeshNode &node = m_nodes[m_selectedNodeIndex];
+        m_ble->sendToNode(node.addr, text.toUtf8());
+        addLog(QString::fromUtf8("\xe2\x86\x92 [0x%1] %2")
+                   .arg(MeshProtocol::addrToHex4(node.addr), text));
+    } else {
+        m_ble->broadcast(text.toUtf8());
+        addLog(QString::fromUtf8("\xe2\x86\x92 [") + tr("Broadcast") + "] " + text);
+    }
     m_broadcastInput->clear();
+}
+
+void ConnectedPage::updateSendPlaceholder()
+{
+    if (m_selectedNodeIndex > 0 && m_selectedNodeIndex < m_nodes.size()) {
+        QString addr = MeshProtocol::addrToHex4(m_nodes[m_selectedNodeIndex].addr);
+        m_broadcastInput->setPlaceholderText(tr("Send to 0x%1...").arg(addr));
+    } else {
+        m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
+    }
 }
 
 void ConnectedPage::onDebugInfoChanged(const QString &info)
@@ -269,20 +293,39 @@ void ConnectedPage::onDeviceNameChanged(const QString &name)
     m_deviceNameLabel->setText(name);
 }
 
-void ConnectedPage::rebuildNodeGrid()
+void ConnectedPage::rebuildNodeList()
 {
     // 清除旧节点卡片
     QLayoutItem *child;
-    while ((child = m_nodeGrid->takeAt(0)) != nullptr) {
+    while ((child = m_nodeListLayout->takeAt(0)) != nullptr) {
         if (child->widget()) child->widget()->deleteLater();
         delete child;
     }
+    m_selectedNodeIndex = -1;
 
     for (int i = 0; i < m_nodes.size(); ++i) {
-        int row = i / 2;
-        int col = i % 2;
-        auto *card = new NodeCardWidget(m_nodes[i], m_nodeGridContainer);
-        connect(card, &NodeCardWidget::clicked, this, &ConnectedPage::nodeClicked);
-        m_nodeGrid->addWidget(card, row, col);
+        auto *card = new NodeCardWidget(m_nodes[i], m_nodeListContainer);
+        // 点击选中节点（而非直接发送）
+        connect(card, &NodeCardWidget::clicked, this, [this, i](const MeshNode &) {
+            // 切换选中状态
+            if (m_selectedNodeIndex == i)
+                m_selectedNodeIndex = -1;   // 取消选中
+            else
+                m_selectedNodeIndex = i;
+
+            // 更新所有卡片的高亮
+            for (int j = 0; j < m_nodeListLayout->count(); ++j) {
+                auto *w = m_nodeListLayout->itemAt(j)->widget();
+                if (w) {
+                    w->setObjectName(j == m_selectedNodeIndex ? "nodeCardSelected" : "nodeCard");
+                    w->style()->unpolish(w);
+                    w->style()->polish(w);
+                }
+            }
+            updateSendPlaceholder();
+        });
+        m_nodeListLayout->addWidget(card);
     }
+    m_nodeListLayout->addStretch();
+    updateSendPlaceholder();
 }
