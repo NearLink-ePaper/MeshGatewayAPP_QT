@@ -117,14 +117,14 @@ jobs:
           path: artifact/
 
   # ═══════════════════════════════════════════════════════════
-  #  macOS — Universal (x64 + arm64)
+  #  macOS — x64 (Intel)
   # ═══════════════════════════════════════════════════════════
-  macos:
-    runs-on: macos-14
+  macos-x64:
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt (macOS)
+      - name: Install Qt (macOS x64)
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
@@ -134,11 +134,11 @@ jobs:
           modules: qtconnectivity
           cache: true
 
-      - name: Configure & Build (Universal)
+      - name: Configure & Build
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 \
             -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }}
           cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
 
@@ -147,12 +147,51 @@ jobs:
           cd build
           macdeployqt NearLink_Mesh.app -dmg || true
           mkdir -p ../artifact
-          cp NearLink_Mesh.dmg ../artifact/ 2>/dev/null || cp -r NearLink_Mesh.app ../artifact/
+          cp NearLink_Mesh.dmg ../artifact/NearLink_Mesh-x64.dmg 2>/dev/null || cp -r NearLink_Mesh.app ../artifact/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NearLink_Mesh-macos-universal
+          name: NearLink_Mesh-macos-x64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  macOS — arm64 (Apple Silicon)
+  # ═══════════════════════════════════════════════════════════
+  macos-arm64:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (macOS arm64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: qtconnectivity
+          cache: true
+
+      - name: Configure & Build
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }}
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package (.dmg)
+        run: |
+          cd build
+          macdeployqt NearLink_Mesh.app -dmg || true
+          mkdir -p ../artifact
+          cp NearLink_Mesh.dmg ../artifact/NearLink_Mesh-arm64.dmg 2>/dev/null || cp -r NearLink_Mesh.app ../artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-macos-arm64
           path: artifact/
 
   # ═══════════════════════════════════════════════════════════
@@ -184,7 +223,7 @@ jobs:
 
       - name: Configure & Build
         run: |
-          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/macos" -type d | head -1)
+          QT_HOST_PATH=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/macos
 
           cmake -B build -G Xcode \
             -DCMAKE_SYSTEM_NAME=iOS \
@@ -265,8 +304,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_ROOT }}
         run: |
-          # Find Qt host path for cross-compilation tools
-          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/gcc_64" -type d | head -1)
+          QT_HOST_PATH=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/gcc_64
 
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
@@ -346,7 +384,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_ROOT }}
         run: |
-          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/gcc_64" -type d | head -1)
+          QT_HOST_PATH=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/gcc_64
 
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
@@ -384,7 +422,7 @@ jobs:
   # ═══════════════════════════════════════════════════════════
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [ windows, linux, macos, ios, android-arm64, android-x86_64 ]
+    needs: [ windows, linux, macos-x64, macos-arm64, ios, android-arm64, android-x86_64 ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
