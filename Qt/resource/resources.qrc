@@ -3,6 +3,7 @@
         <file alias="style.qss">style/style.qss</file>
     </qresource>
     <qresource prefix="/img">
+        <file alias="icon.png">img/icon.png</file>
         <file alias="bluetooth.svg">img/蓝牙.svg</file>
         <file alias="gateway.svg">img/网关.svg</file>
         <file alias="chip.svg">img/芯片.svg</file>

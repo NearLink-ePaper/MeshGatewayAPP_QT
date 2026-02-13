@@ -6,13 +6,20 @@
 #include <QLocale>
 #include <QTranslator>
 #include <QFont>
+#include <QIcon>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    a.setApplicationName("NearLink Mesh");
     a.setOrganizationName("wellwhz");
     a.setApplicationVersion(APP_VERSION_STR);
+    a.setWindowIcon(QIcon(":/img/icon.png"));
+
+    // App 名称根据系统语言切换
+    if (QLocale::system().language() == QLocale::Chinese)
+        a.setApplicationName("星闪智能网关");
+    else
+        a.setApplicationName("NearLink Mesh");
 
     // 注册自定义类型，确保信号槽跨线程工作
     qRegisterMetaType<MeshNode>("MeshNode");

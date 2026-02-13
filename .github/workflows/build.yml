@@ -30,6 +30,10 @@ jobs:
           modules: qtconnectivity
           cache: true
 
+      - name: Generate app icon (.ico)
+        run: magick Qt/resource/img/icon.png -define icon:auto-resize=256,128,64,48,32,16 Windows/icon.ico
+        shell: bash
+
       - name: Configure CMake
         run: >
           cmake -B build -G "Visual Studio 17 2022" -A x64
@@ -92,10 +96,11 @@ jobs:
           mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
 
           cp build/NearLink_Mesh AppDir/usr/bin/
+          cp Qt/resource/img/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/nearlink-mesh.png
 
           cat > AppDir/usr/share/applications/nearlink-mesh.desktop << 'EOF'
           [Desktop Entry]
-          Name=NearLink Mesh
+          Name=星闪智能网关
           Exec=NearLink_Mesh
           Icon=nearlink-mesh
           Type=Application
@@ -133,6 +138,19 @@ jobs:
           arch: clang_64
           modules: qtconnectivity
           cache: true
+
+      - name: Generate app icon (.icns)
+        run: |
+          ICONSET=MacOS/icon.iconset
+          mkdir -p "$ICONSET"
+          SRC=Qt/resource/img/icon.png
+          for sz in 16 32 64 128 256 512; do
+            sips -z $sz $sz "$SRC" --out "$ICONSET/icon_${sz}x${sz}.png" >/dev/null
+            dbl=$((sz * 2))
+            sips -z $dbl $dbl "$SRC" --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o MacOS/icon.icns
+          rm -rf "$ICONSET"
 
       - name: Configure & Build (Universal)
         run: |
@@ -215,8 +233,6 @@ jobs:
             cp -r "$APP_PATH" Payload/
             zip -r artifact/NearLink_Mesh-unsigned.ipa Payload
             rm -rf Payload
-            # Also keep the .app bundle
-            cp -r "$APP_PATH" artifact/
           else
             echo "WARNING: .app bundle not found, listing build directory:"
             find build -name "*.app" -type d
@@ -226,7 +242,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: NearLink_Mesh-ios-arm64
-          path: artifact/
+          path: artifact/NearLink_Mesh-unsigned.ipa
 
   # ═══════════════════════════════════════════════════════════
   #  Android — arm64-v8a
@@ -293,16 +309,18 @@ jobs:
           cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          find build -name "*.apk" -type f | head -5
-          find build -name "*.apk" -type f -exec cp {} artifact/ \;
-          # Rename for clarity
-          cd artifact && for f in *.apk; do mv "$f" "NearLink_Mesh-arm64-v8a.apk" 2>/dev/null; break; done
+          APK=$(find build -name "*.apk" -not -name "*debug*" -type f | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" artifact/NearLink_Mesh-arm64-v8a.apk
+          else
+            echo "ERROR: APK not found" && exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: NearLink_Mesh-android-arm64
-          path: artifact/
+          path: artifact/NearLink_Mesh-arm64-v8a.apk
 
   # ═══════════════════════════════════════════════════════════
   #  Android — x86_64 (模拟器)
@@ -369,16 +387,18 @@ jobs:
           cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          find build -name "*.apk" -type f | head -5
-          find build -name "*.apk" -type f -exec cp {} artifact/ \;
-          # Rename for clarity
-          cd artifact && for f in *.apk; do mv "$f" "NearLink_Mesh-x86_64.apk" 2>/dev/null; break; done
+          APK=$(find build -name "*.apk" -not -name "*debug*" -type f | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" artifact/NearLink_Mesh-x86_64.apk
+          else
+            echo "ERROR: APK not found" && exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: NearLink_Mesh-android-x86_64
-          path: artifact/
+          path: artifact/NearLink_Mesh-x86_64.apk
 
   # ═══════════════════════════════════════════════════════════
   #  Release — 自动发布 (仅 tag 触发)

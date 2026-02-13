@@ -18,6 +18,13 @@ endif()
 # Windows 平台宏
 add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX)
 
+# ── App Icon（.ico 由 CI 从 icon.png 生成）────────────────
+set(WIN_ICON_RC "${CMAKE_CURRENT_SOURCE_DIR}/Windows/app.rc")
+set(WIN_ICON_ICO "${CMAKE_CURRENT_SOURCE_DIR}/Windows/icon.ico")
+if(EXISTS "${WIN_ICON_ICO}")
+    list(APPEND PLATFORM_SOURCES "${WIN_ICON_RC}")
+endif()
+
 # 如需添加 Windows 特定源文件，在此追加：
 # list(APPEND PLATFORM_SOURCES
 #     Windows/src/winble.cpp

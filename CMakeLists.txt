@@ -170,11 +170,43 @@ endif()
 
 # ─── iOS 特定属性 ─────────────────────────────────────────
 if(IOS AND DEFINED IOS_INFO_PLIST)
+    # LaunchScreen.storyboard 必须作为 bundle resource，否则灵动岛/全面屏以兼容模式运行
+    if(DEFINED IOS_LAUNCH_STORYBOARD)
+        target_sources(NearLink_Mesh PRIVATE "${IOS_LAUNCH_STORYBOARD}")
+        set_source_files_properties("${IOS_LAUNCH_STORYBOARD}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION Resources)
+    endif()
+
+    # AppIcon — Asset Catalog
+    if(DEFINED IOS_ASSET_CATALOG)
+        target_sources(NearLink_Mesh PRIVATE "${IOS_ASSET_CATALOG}")
+        set_source_files_properties("${IOS_ASSET_CATALOG}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION Resources)
+    endif()
+
+    # App 名称本地化（英文 / 简体中文）
+    if(DEFINED IOS_LPROJ_EN)
+        target_sources(NearLink_Mesh PRIVATE "${IOS_LPROJ_EN}")
+        set_source_files_properties("${IOS_LPROJ_EN}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources/en.lproj")
+    endif()
+    if(DEFINED IOS_LPROJ_ZH)
+        target_sources(NearLink_Mesh PRIVATE "${IOS_LPROJ_ZH}")
+        set_source_files_properties("${IOS_LPROJ_ZH}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources/zh-Hans.lproj")
+    endif()
+
     set_target_properties(NearLink_Mesh PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${IOS_INFO_PLIST}"
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "wellwhz"
         XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "cn.wellwhz.nearlinkmesh"
+        # AppIcon from Assets.xcassets
+        XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon"
+        # iPhone(1) + iPad(2)
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        # 灵动岛需要 iOS 16+；设为 15.0 确保兼容更多设备
+        XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "15.0"
         # 通过 Xcode INFOPLIST_KEY_ 确保蓝牙权限嵌入 Info.plist
         XCODE_ATTRIBUTE_INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription
             "This app uses Bluetooth to connect to NearLink Mesh gateway devices for network topology viewing and data communication."
@@ -184,8 +216,18 @@ if(IOS AND DEFINED IOS_INFO_PLIST)
     )
 endif()
 
+# ─── macOS 图标 ──────────────────────────────────────────
+if(APPLE AND NOT IOS AND DEFINED MACOS_ICON)
+    target_sources(NearLink_Mesh PRIVATE "${MACOS_ICON}")
+    set_source_files_properties("${MACOS_ICON}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+    get_filename_component(_icon_name "${MACOS_ICON}" NAME)
+    set(MACOSX_ICON_OPTION MACOSX_BUNDLE_ICON_FILE "${_icon_name}")
+endif()
+
 # ─── 目标属性 ────────────────────────────────────────────
 set_target_properties(NearLink_Mesh PROPERTIES
+    ${MACOSX_ICON_OPTION}
     MACOSX_BUNDLE_GUI_IDENTIFIER cn.wellwhz.nearlinkmesh
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}

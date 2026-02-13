@@ -7,7 +7,7 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle("NearLink Mesh");
+    setWindowTitle(qApp->applicationName());
     resize(420, 700);
     setMinimumSize(360, 560);
 
@@ -56,7 +56,7 @@ void MainWindow::setupTopBar()
     auto *layout = new QHBoxLayout(topBar);
     layout->setContentsMargins(16, 0, 16, 0);
 
-    auto *title = new QLabel("NearLink Mesh", topBar);
+    auto *title = new QLabel(qApp->applicationName(), topBar);
     title->setObjectName("appTitle");
     layout->addWidget(title);
 
