@@ -567,12 +567,22 @@ jobs:
       # ── 编译应用 ────────────────────────────────────────────
       - name: Configure & Build App
         run: |
+          OHOS_TARGET=aarch64-linux-ohos
+
           cmake -B build \
+            -DCMAKE_SYSTEM_NAME=OHOS \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
             -DCMAKE_C_COMPILER=$LLVM_INSTALL_DIR/bin/clang \
             -DCMAKE_CXX_COMPILER=$LLVM_INSTALL_DIR/bin/clang++ \
+            -DCMAKE_C_COMPILER_TARGET=$OHOS_TARGET \
+            -DCMAKE_CXX_COMPILER_TARGET=$OHOS_TARGET \
             -DCMAKE_SYSROOT=$OHOS_SDK_SYSROOT \
+            -DCMAKE_FIND_ROOT_PATH="/opt/qt-ohos;$OHOS_SDK_SYSROOT" \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
             -DCMAKE_PREFIX_PATH=/opt/qt-ohos \
-            -DCMAKE_FIND_ROOT_PATH=/opt/qt-ohos \
             -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
             -DOHOS=ON \
             -DOHOS_ARCH=${{ env.OHOS_ARCH }}
