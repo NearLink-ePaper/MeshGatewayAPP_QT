@@ -16,6 +16,19 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     m_debugLabel->setWordWrap(true);
     mainLayout->addWidget(m_debugLabel);
 
+    // 设备列表（初始隐藏，扫描到设备后显示）
+    m_deviceList = new QListWidget(this);
+    m_deviceList->setObjectName("deviceList");
+    m_deviceList->setFrameShape(QFrame::NoFrame);
+    m_deviceList->setSpacing(4);
+    m_deviceList->setSelectionMode(QAbstractItemView::NoSelection);
+    m_deviceList->setVisible(false);
+    connect(m_deviceList, &QListWidget::itemClicked, this, &ScanPage::onItemClicked);
+    mainLayout->addWidget(m_deviceList, 1);
+
+    // 弹性空间（设备列表隐藏时将按钮推到底部）
+    mainLayout->addStretch(1);
+
     // 扫描按钮
     m_scanBtn = new QPushButton(tr("Scan Mesh Gateway"), this);
     m_scanBtn->setObjectName("scanButton");
@@ -29,14 +42,6 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     m_hintLabel->setObjectName("hintLabel");
     m_hintLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(m_hintLabel);
-
-    // 设备列表
-    m_deviceList = new QListWidget(this);
-    m_deviceList->setObjectName("deviceList");
-    m_deviceList->setSpacing(4);
-    m_deviceList->setSelectionMode(QAbstractItemView::NoSelection);
-    connect(m_deviceList, &QListWidget::itemClicked, this, &ScanPage::onItemClicked);
-    mainLayout->addWidget(m_deviceList, 1);
 
     // 倒计时定时器
     m_countdownTimer.setInterval(1000);

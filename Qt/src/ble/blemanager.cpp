@@ -1,6 +1,10 @@
 #include "blemanager.h"
 #include <QBluetoothUuid>
 #include <QDebug>
+#include <QCoreApplication>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+#include <QPermissions>
+#endif
 
 const QBluetoothUuid BleManager::SERVICE_UUID(QBluetoothUuid(quint16(0xFFE0)));
 const QBluetoothUuid BleManager::TX_CHAR_UUID(QBluetoothUuid(quint16(0xFFE1)));
@@ -54,6 +58,34 @@ void BleManager::setDebugInfo(const QString &info)
 // ─── 扫描 ───────────────────────────────────────────────
 
 void BleManager::startScan()
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    QBluetoothPermission btPerm;
+    switch (qApp->checkPermission(btPerm)) {
+    case Qt::PermissionStatus::Granted:
+        doStartScan();
+        break;
+    case Qt::PermissionStatus::Undetermined:
+        qApp->requestPermission(btPerm, this, [this](const QPermission &permission) {
+            if (permission.status() == Qt::PermissionStatus::Granted)
+                doStartScan();
+            else {
+                setConnState(Disconnected);
+                setDebugInfo(tr("Bluetooth permission denied"));
+            }
+        });
+        break;
+    case Qt::PermissionStatus::Denied:
+        setConnState(Disconnected);
+        setDebugInfo(tr("Bluetooth permission denied. Please enable in Settings."));
+        break;
+    }
+#else
+    doStartScan();
+#endif
+}
+
+void BleManager::doStartScan()
 {
     m_scannedDevices.clear();
     emit scannedDevicesChanged();
@@ -121,8 +153,15 @@ void BleManager::onScanFinished()
 
 void BleManager::onScanError(QBluetoothDeviceDiscoveryAgent::Error error)
 {
-    Q_UNUSED(error)
     setConnState(Disconnected);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 4, 0)
+    if (error == QBluetoothDeviceDiscoveryAgent::MissingPermissionsError) {
+        setDebugInfo(tr("Bluetooth permission required. Please grant Bluetooth access in system settings."));
+        return;
+    }
+#else
+    Q_UNUSED(error)
+#endif
     setDebugInfo(tr("Scan failed: %1").arg(m_discoveryAgent->errorString()));
 }
 

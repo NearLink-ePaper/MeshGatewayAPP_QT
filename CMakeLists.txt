@@ -175,6 +175,12 @@ if(IOS AND DEFINED IOS_INFO_PLIST)
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "wellwhz"
         XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
         XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "cn.wellwhz.nearlinkmesh"
+        # 通过 Xcode INFOPLIST_KEY_ 确保蓝牙权限嵌入 Info.plist
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription
+            "This app uses Bluetooth to connect to NearLink Mesh gateway devices for network topology viewing and data communication."
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription
+            "This app uses Bluetooth to connect to NearLink Mesh gateway devices."
+        XCODE_ATTRIBUTE_INFOPLIST_KEY_UIBackgroundModes "bluetooth-central"
     )
 endif()
 

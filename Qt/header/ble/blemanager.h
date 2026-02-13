@@ -81,6 +81,7 @@ private slots:
 private:
     void setConnState(ConnState s);
     void setDebugInfo(const QString &info);
+    void doStartScan();
     bool sendRaw(const QByteArray &data);
     void handleNotify(const QByteArray &data);
     void setupService();
