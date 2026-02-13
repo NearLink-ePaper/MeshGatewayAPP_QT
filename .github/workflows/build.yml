@@ -500,17 +500,30 @@ jobs:
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
           git clone --depth 1 https://gitcode.com/openharmony-sig/qt.git /tmp/qt-patches
+
+          echo "=== Patch repo top-level ==="
+          ls -la /tmp/qt-patches/patch/
+
           PATCH_VER=v5.15.17
           PATCH_DIR=/tmp/qt-patches/patch/$PATCH_VER
-
           if [ ! -d "$PATCH_DIR" ]; then
-            echo "::warning::Patch dir $PATCH_VER not found, trying v5.15.12"
+            echo "::warning::$PATCH_VER not found, trying v5.15.12"
             PATCH_VER=v5.15.12
             PATCH_DIR=/tmp/qt-patches/patch/$PATCH_VER
           fi
+          if [ ! -d "$PATCH_DIR" ]; then
+            echo "::error::No patch directory found"
+            find /tmp/qt-patches -type d -maxdepth 3
+            exit 1
+          fi
 
-          echo "=== Patch directory ($PATCH_VER) ==="
-          ls -la "$PATCH_DIR"
+          echo "=== Patch dir ($PATCH_VER) structure ==="
+          find "$PATCH_DIR" -type f | head -40
+
+          echo "=== qtbase patch contents ==="
+          if [ -d "$PATCH_DIR/qtbase" ]; then
+            find "$PATCH_DIR/qtbase" -type f | head -30
+          fi
 
           for module in qtbase qtconnectivity qtdeclarative qtquickcontrols qtmultimedia qtsensors; do
             if [ ! -d "$PATCH_DIR/$module" ]; then
@@ -521,19 +534,32 @@ jobs:
             echo "=== Applying patches to $module ==="
             cd /tmp/qt-src/$module
 
-            # 检测补丁格式: .patch 文件 or 源码目录覆盖
-            PATCHES=$(find "$PATCH_DIR/$module" -maxdepth 1 -name "*.patch" -o -name "*.diff" | sort)
+            # 检测补丁格式: .patch/.diff 文件 or 源码目录覆盖
+            PATCHES=$(find "$PATCH_DIR/$module" -name "*.patch" -o -name "*.diff" | sort)
             if [ -n "$PATCHES" ]; then
               for p in $PATCHES; do
-                echo "  git apply: $(basename $p)"
+                echo "  git apply: $p"
                 git apply "$p" || git apply --3way "$p" || echo "::warning::Failed: $p"
               done
             else
               # 目录形式补丁 — 直接覆盖源码
-              echo "  Copying patch files overlay for $module"
-              cp -r "$PATCH_DIR/$module"/. /tmp/qt-src/$module/
+              echo "  Overlay copy: $PATCH_DIR/$module -> /tmp/qt-src/$module"
+              cp -rv "$PATCH_DIR/$module"/. /tmp/qt-src/$module/ 2>&1 | tail -20
             fi
           done
+
+          # 验证关键文件
+          echo "=== Verification ==="
+          if [ -d /tmp/qt-src/qtbase/mkspecs/ohos-clang ]; then
+            echo "OK: ohos-clang mkspec found"
+            ls /tmp/qt-src/qtbase/mkspecs/ohos-clang/
+          else
+            echo "::error::ohos-clang mkspec NOT found after patching"
+            echo "Available mkspecs:"
+            ls /tmp/qt-src/qtbase/mkspecs/ | grep -i ohos || echo "none"
+            exit 1
+          fi
+
           rm -rf /tmp/qt-patches
 
       - name: Configure Qt for OHOS
