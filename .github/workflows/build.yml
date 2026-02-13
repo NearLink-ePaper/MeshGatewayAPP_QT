@@ -562,12 +562,8 @@ jobs:
       - name: Configure Qt for OHOS
         if: steps.qt-cache.outputs.cache-hit != 'true'
         env:
-          OHOS_ARCH: arm64-v8a
           OHOS_SDK_PATH: /opt/ohos-sdk
         run: |
-          echo "=== configure --help (ohos related) ==="
-          /tmp/qt-src/configure --help 2>/dev/null | grep -iE "ohos|arch|platform" | head -20 || true
-
           mkdir -p /tmp/qt-build && cd /tmp/qt-build
 
           QT_SKIPS="\
@@ -585,6 +581,7 @@ jobs:
           /tmp/qt-src/configure \
             -v \
             -xplatform oh-clang \
+            -device-option OHOS_ARCH=arm64-v8a \
             -prefix /data/storage/el1/bundle/libs/arm64 \
             -extprefix /opt/qt-ohos \
             -opensource -confirm-license \
