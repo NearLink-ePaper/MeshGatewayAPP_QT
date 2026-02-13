@@ -591,7 +591,7 @@ jobs:
             -opengles3 \
             $QT_SKIPS \
             -no-dbus \
-            -c++std c++14 \
+            -c++std c++17 \
             -nomake examples \
             -nomake tests
 
