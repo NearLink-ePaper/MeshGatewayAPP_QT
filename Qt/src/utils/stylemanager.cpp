@@ -1,6 +1,8 @@
 #include "stylemanager.h"
 #include <QFile>
 #include <QTextStream>
+#include <QGuiApplication>
+#include <QtMath>
 
 QString StyleManager::loadStyleSheet()
 {
@@ -11,6 +13,22 @@ QString StyleManager::loadStyleSheet()
     }
     // 如果资源文件加载失败，使用内置样式
     return darkThemeStyleSheet();
+}
+
+QPixmap StyleManager::loadSvgIcon(const QString &path, int logicalSize)
+{
+    qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
+    int phys = qCeil(logicalSize * dpr);
+    QPixmap pix(path);
+    pix = pix.scaled(phys, phys, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    pix.setDevicePixelRatio(dpr);
+    return pix;
+}
+
+int StyleManager::dp(int logicalPx)
+{
+    qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
+    return qCeil(logicalPx * dpr);
 }
 
 QString StyleManager::darkThemeStyleSheet()

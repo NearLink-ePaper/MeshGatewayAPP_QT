@@ -1,4 +1,5 @@
 #include "connectedpage.h"
+#include "stylemanager.h"
 #include <QDateTime>
 #include <QFont>
 #include <QFrame>
@@ -25,8 +26,7 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
 
     auto *iconLabel = new QLabel(iconBg);
     QString svgPath = node.hops == 0 ? ":/img/gateway.svg" : ":/img/chip.svg";
-    QPixmap pix(svgPath);
-    iconLabel->setPixmap(pix.scaled(22, 22, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    iconLabel->setPixmap(StyleManager::loadSvgIcon(svgPath, 22));
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFixedSize(36, 36);
 

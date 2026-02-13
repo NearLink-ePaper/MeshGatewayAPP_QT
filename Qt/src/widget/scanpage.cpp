@@ -1,4 +1,5 @@
 #include "scanpage.h"
+#include "stylemanager.h"
 #include <QHBoxLayout>
 #include <QFont>
 #include <QFrame>
@@ -123,8 +124,7 @@ void ScanPage::refreshDeviceList()
 
         // BLE 图标
         auto *iconLabel = new QLabel(widget);
-        QPixmap btPix(":/img/bluetooth.svg");
-        iconLabel->setPixmap(btPix.scaled(22, 22, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        iconLabel->setPixmap(StyleManager::loadSvgIcon(":/img/bluetooth.svg", 22));
         iconLabel->setFixedSize(36, 36);
         iconLabel->setAlignment(Qt::AlignCenter);
         iconLabel->setObjectName("deviceIcon");
