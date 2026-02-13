@@ -30,6 +30,7 @@ BleManager::BleManager(QObject *parent)
             this, &BleManager::onScanError);
 #endif
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated,
             this, [this](const QBluetoothDeviceInfo &info, QBluetoothDeviceDiscoveryAgent::UpdatedFields fields) {
         if (fields.testFlag(QBluetoothDeviceDiscoveryAgent::RssiField)) {
@@ -41,6 +42,7 @@ BleManager::BleManager(QObject *parent)
             }
         }
     });
+#endif
 
     m_scanTimer.setSingleShot(true);
     connect(&m_scanTimer, &QTimer::timeout, this, &BleManager::stopScan);
