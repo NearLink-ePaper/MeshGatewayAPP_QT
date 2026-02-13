@@ -490,6 +490,11 @@ jobs:
           git clone --depth 1 -b "$QT_BRANCH" "$QT_REPO" /tmp/qt-src
 
           cd /tmp/qt-src
+          echo "=== repo top-level files ==="
+          ls -la
+          echo "=== branches ==="
+          git branch -a || true
+
           # 初始化子模块 (优先 init-repository，回退 git submodule)
           if [ -f init-repository ]; then
             perl init-repository --module-subset=default,-qtwebengine,-qtdoc
@@ -497,9 +502,30 @@ jobs:
             git submodule update --init --recursive --depth 1
           fi
 
+          echo "=== after submodule init ==="
+          ls -la
+          echo "=== looking for configure ==="
+          find /tmp/qt-src -maxdepth 2 -name "configure" -type f 2>/dev/null || echo "configure not found"
+
       - name: Configure Qt for OHOS
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
+          # 自动检测 configure 路径
+          if [ -x /tmp/qt-src/configure ]; then
+            CONFIGURE=/tmp/qt-src/configure
+          elif [ -x /tmp/qt-src/qtbase/configure ]; then
+            CONFIGURE=/tmp/qt-src/qtbase/configure
+          elif [ -f /tmp/qt-src/configure ]; then
+            CONFIGURE=/tmp/qt-src/configure
+          elif [ -f /tmp/qt-src/qtbase/configure ]; then
+            CONFIGURE=/tmp/qt-src/qtbase/configure
+          else
+            echo "::error::configure script not found in /tmp/qt-src or /tmp/qt-src/qtbase"
+            find /tmp/qt-src -maxdepth 3 -name "configure*" -type f 2>/dev/null
+            exit 1
+          fi
+          echo "Using configure: $CONFIGURE"
+
           mkdir -p /tmp/qt-build && cd /tmp/qt-build
 
           # 跳过不需要的模块以加速编译 (保留 qtconnectivity 供蓝牙使用)
@@ -515,7 +541,7 @@ jobs:
             -skip qtwebengine -skip qtwebglplugin -skip qtwebsockets \
             -skip qtwebview -skip qtwinextras -skip qtx11extras -skip doc"
 
-          /tmp/qt-src/configure \
+          $CONFIGURE \
             -v \
             -xplatform ohos-clang \
             -prefix /data/storage/el1/bundle/libs/arm64 \
