@@ -571,7 +571,14 @@ jobs:
 
       - name: Configure Qt for OHOS
         if: steps.qt-cache.outputs.cache-hit != 'true'
+        env:
+          OHOS_ARCH: arm64-v8a
+          NATIVE_OHOS_SDK: /opt/ohos-sdk
+          OHOS_SDK_ROOT: /opt/ohos-sdk
         run: |
+          echo "=== configure --help (ohos related) ==="
+          /tmp/qt-src/configure --help 2>/dev/null | grep -iE "ohos|arch|platform" | head -20 || true
+
           mkdir -p /tmp/qt-build && cd /tmp/qt-build
 
           QT_SKIPS="\
@@ -595,7 +602,6 @@ jobs:
             -release \
             -no-use-gold-linker \
             -no-gcc-sysroot \
-            -ohos-arch ${{ env.OHOS_ARCH }} \
             -opengles3 \
             $QT_SKIPS \
             -no-dbus \
