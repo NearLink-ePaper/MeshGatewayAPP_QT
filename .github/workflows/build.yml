@@ -200,6 +200,9 @@ jobs:
           cache: true
           set-env: false
 
+      - name: Generate app icon (1024x1024)
+        run: sips -z 1024 1024 Qt/resource/img/icon.png --out IOS/Assets.xcassets/AppIcon.appiconset/icon_1024.png
+
       - name: Configure & Build
         run: |
           QT_IOS=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/ios
@@ -402,74 +405,101 @@ jobs:
 
   # ═══════════════════════════════════════════════════════════
   #  Harmony — OpenHarmony arm64-v8a (Windows 交叉编译)
+  #  参考: https://wiki.qt.io/Qt_for_HarmonyOS/zh
   # ═══════════════════════════════════════════════════════════
-  # 需要在仓库 Settings → Variables 中配置:
-  #   OHOS_SDK_URL   — OHOS SDK 下载链接 (.zip)
-  #   QT_OHOS_URL    — Qt for OHOS 下载链接 (.zip / .tar.gz)
-  # 或直接在自托管 runner 上预装并设置:
-  #   OHOS_SDK_ROOT  — OHOS SDK 根目录
-  #   QT_OHOS_DIR    — Qt for OHOS 安装路径
+  # 需要在仓库 Settings → Secrets and variables → Actions → Variables 中配置:
+  #   OHOS_SDK_URL   — OHOS SDK native 包下载链接 (.zip)
+  #   QT_OHOS_URL    — 预编译 Qt 5.12.12 for OHOS 下载链接 (.zip)
+  #   MINGW_URL      — llvm-mingw 工具链下载链接 (.zip)
+  #                    默认: https://github.com/mstorsjo/llvm-mingw/releases/download/20230919/llvm-mingw-20230919-ucrt-x86_64.zip
   harmony:
     runs-on: windows-latest
     if: vars.OHOS_SDK_URL != '' && vars.QT_OHOS_URL != ''
+    env:
+      MINGW_DEFAULT_URL: https://github.com/mstorsjo/llvm-mingw/releases/download/20230919/llvm-mingw-20230919-ucrt-x86_64.zip
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download & extract llvm-mingw
+        shell: pwsh
+        run: |
+          $url = if ("${{ vars.MINGW_URL }}") { "${{ vars.MINGW_URL }}" } else { "$env:MINGW_DEFAULT_URL" }
+          $zip = "$env:RUNNER_TEMP\llvm-mingw.zip"
+          Write-Host "Downloading llvm-mingw from $url ..."
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\mingw" -Force
+          # 定位 bin\mingw32-make.exe
+          $makeExe = Get-ChildItem -Path "$env:RUNNER_TEMP\mingw" -Recurse -Filter "mingw32-make.exe" | Select-Object -First 1
+          if ($makeExe) {
+            $mingwBin = $makeExe.DirectoryName
+            Write-Host "MINGW_BIN=$mingwBin"
+            echo "MINGW_BIN=$mingwBin" >> $env:GITHUB_ENV
+            echo "$mingwBin" >> $env:GITHUB_PATH
+          } else {
+            Write-Host "::error::mingw32-make.exe not found in llvm-mingw archive"
+            exit 1
+          }
 
       - name: Download & extract OHOS SDK
         shell: pwsh
         run: |
-          $sdkZip = "$env:RUNNER_TEMP\ohos-sdk.zip"
+          $zip = "$env:RUNNER_TEMP\ohos-sdk.zip"
           Write-Host "Downloading OHOS SDK..."
-          Invoke-WebRequest -Uri "${{ vars.OHOS_SDK_URL }}" -OutFile $sdkZip
-          $sdkDir = "$env:RUNNER_TEMP\ohos-sdk"
-          Expand-Archive -Path $sdkZip -DestinationPath $sdkDir -Force
-          # 定位 native 目录
-          $nativeDir = Get-ChildItem -Path $sdkDir -Recurse -Directory -Filter "native" | Select-Object -First 1
+          Invoke-WebRequest -Uri "${{ vars.OHOS_SDK_URL }}" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\ohos-sdk" -Force
+          # 定位 native 目录 (包含 llvm/ 和 sysroot/)
+          $nativeDir = Get-ChildItem -Path "$env:RUNNER_TEMP\ohos-sdk" -Recurse -Directory -Filter "native" | Select-Object -First 1
           if ($nativeDir) {
-            Write-Host "NATIVE_OHOS_SDK=$($nativeDir.FullName)"
-            echo "NATIVE_OHOS_SDK=$($nativeDir.FullName)" >> $env:GITHUB_ENV
+            $sdk = $nativeDir.FullName
+            Write-Host "NATIVE_OHOS_SDK=$sdk"
+            echo "NATIVE_OHOS_SDK=$sdk" >> $env:GITHUB_ENV
+            echo "OHOS_SDK_SYSROOT=$sdk\sysroot" >> $env:GITHUB_ENV
+            echo "LLVM_INSTALL_DIR=$sdk\llvm" >> $env:GITHUB_ENV
           } else {
             Write-Host "::error::OHOS SDK native directory not found"
             exit 1
           }
 
-      - name: Download & extract Qt for OHOS
+      - name: Download & extract Qt 5.12.12 for OHOS
         shell: pwsh
         run: |
-          $qtArchive = "$env:RUNNER_TEMP\qt-ohos.zip"
+          $zip = "$env:RUNNER_TEMP\qt-ohos.zip"
           Write-Host "Downloading Qt for OHOS..."
-          Invoke-WebRequest -Uri "${{ vars.QT_OHOS_URL }}" -OutFile $qtArchive
-          $qtDir = "$env:RUNNER_TEMP\qt-ohos"
-          Expand-Archive -Path $qtArchive -DestinationPath $qtDir -Force
-          # 定位 Qt 安装路径 (包含 bin/qmake 或 lib/cmake)
-          $cmakeDir = Get-ChildItem -Path $qtDir -Recurse -Directory -Filter "cmake" | Select-Object -First 1
-          if ($cmakeDir) {
-            $qtRoot = $cmakeDir.Parent.Parent.FullName
-            Write-Host "QT_OHOS_DIR=$qtRoot"
-            echo "QT_OHOS_DIR=$qtRoot" >> $env:GITHUB_ENV
+          Invoke-WebRequest -Uri "${{ vars.QT_OHOS_URL }}" -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath "$env:RUNNER_TEMP\qt-ohos" -Force
+          # 定位 Qt 安装路径 (包含 bin/qmake 或 lib/)
+          $qmake = Get-ChildItem -Path "$env:RUNNER_TEMP\qt-ohos" -Recurse -Filter "qmake.exe" | Select-Object -First 1
+          if ($qmake) {
+            $qtRoot = $qmake.Directory.Parent.FullName
           } else {
-            Write-Host "QT_OHOS_DIR=$qtDir"
-            echo "QT_OHOS_DIR=$qtDir" >> $env:GITHUB_ENV
+            $libDir = Get-ChildItem -Path "$env:RUNNER_TEMP\qt-ohos" -Recurse -Directory -Filter "lib" | Select-Object -First 1
+            if ($libDir) { $qtRoot = $libDir.Parent.FullName }
+            else         { $qtRoot = "$env:RUNNER_TEMP\qt-ohos" }
           }
+          Write-Host "QT_OHOS_DIR=$qtRoot"
+          echo "QT_OHOS_DIR=$qtRoot" >> $env:GITHUB_ENV
 
       - name: Configure CMake (OHOS cross-compile)
-        shell: pwsh
+        shell: cmd
         run: |
-          $toolchain = "$env:NATIVE_OHOS_SDK\build\cmake\ohos.toolchain.cmake"
-          cmake -B build `
-            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
-            -DCMAKE_PREFIX_PATH="$env:QT_OHOS_DIR" `
-            -DOHOS_ARCH=arm64-v8a `
-            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake -B build -G "MinGW Makefiles" ^
+            -DCMAKE_C_COMPILER=%LLVM_INSTALL_DIR%\bin\clang.exe ^
+            -DCMAKE_CXX_COMPILER=%LLVM_INSTALL_DIR%\bin\clang++.exe ^
+            -DCMAKE_SYSROOT=%OHOS_SDK_SYSROOT% ^
+            -DCMAKE_PREFIX_PATH=%QT_OHOS_DIR% ^
+            -DCMAKE_FIND_ROOT_PATH=%QT_OHOS_DIR% ^
+            -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
+            -DOHOS=ON ^
+            -DOHOS_ARCH=arm64-v8a
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        shell: cmd
+        run: mingw32-make -C build -j%NUMBER_OF_PROCESSORS%
 
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          # 收集 .so 产物
           $so = Get-ChildItem -Path build -Recurse -Filter "libNearLink_Mesh.so" | Select-Object -First 1
           if ($so) {
             Copy-Item $so.FullName -Destination artifact\
