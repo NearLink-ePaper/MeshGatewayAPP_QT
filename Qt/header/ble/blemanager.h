@@ -82,6 +82,7 @@ private:
     void setConnState(ConnState s);
     void setDebugInfo(const QString &info);
     void doStartScan();
+    void restartScanForRssi();
     bool sendRaw(const QByteArray &data);
     void handleNotify(const QByteArray &data);
     void setupService();
@@ -105,6 +106,7 @@ private:
     QLowEnergyCharacteristic        m_rxChar;         // Write characteristic
     QLowEnergyCharacteristic        m_txChar;         // Notify characteristic
     QTimer                          m_scanTimer;
+    QTimer                          m_rssiRefreshTimer;
 };
 
 #endif // BLEMANAGER_H

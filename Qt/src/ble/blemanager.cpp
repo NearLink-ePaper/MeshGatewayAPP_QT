@@ -46,6 +46,10 @@ BleManager::BleManager(QObject *parent)
     m_scanTimer.setSingleShot(true);
     connect(&m_scanTimer, &QTimer::timeout, this, &BleManager::stopScan);
 
+    // RSSI 刷新: 每 2 秒重启扫描，强制 CoreBluetooth 重新发送 RSSI
+    m_rssiRefreshTimer.setInterval(2000);
+    connect(&m_rssiRefreshTimer, &QTimer::timeout, this, &BleManager::restartScanForRssi);
+
     setDebugInfo(tr("Ready"));
 }
 
@@ -107,11 +111,13 @@ void BleManager::doStartScan()
 
     m_discoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
     m_scanTimer.start(SCAN_TIMEOUT_MS);
+    m_rssiRefreshTimer.start();
 }
 
 void BleManager::stopScan()
 {
     m_scanTimer.stop();
+    m_rssiRefreshTimer.stop();
     if (m_discoveryAgent->isActive())
         m_discoveryAgent->stop();
 
@@ -119,6 +125,15 @@ void BleManager::stopScan()
         setConnState(Disconnected);
         setDebugInfo(tr("Scan finished, found %1 device(s)").arg(m_scannedDevices.size()));
     }
+}
+
+void BleManager::restartScanForRssi()
+{
+    if (m_connState != Scanning || !m_discoveryAgent)
+        return;
+    // 短暂停止后立即重启，不清除设备列表
+    m_discoveryAgent->stop();
+    m_discoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
 }
 
 void BleManager::onDeviceDiscovered(const QBluetoothDeviceInfo &info)
@@ -158,7 +173,11 @@ void BleManager::onDeviceDiscovered(const QBluetoothDeviceInfo &info)
 
 void BleManager::onScanFinished()
 {
+    // RSSI 刷新重启会触发 finished 信号，忽略（scanTimer 仍在运行说明还没到时间）
+    if (m_connState == Scanning && m_rssiRefreshTimer.isActive())
+        return;
     if (m_connState == Scanning) {
+        m_rssiRefreshTimer.stop();
         setConnState(Disconnected);
         setDebugInfo(tr("Scan finished, found %1 device(s)").arg(m_scannedDevices.size()));
     }
