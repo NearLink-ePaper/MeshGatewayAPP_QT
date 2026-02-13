@@ -291,7 +291,11 @@ void BleManager::setupService()
 
 void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     if (state != QLowEnergyService::RemoteServiceDiscovered)
+#else
+    if (state != QLowEnergyService::ServiceDiscovered)
+#endif
         return;
 
     // 获取特征

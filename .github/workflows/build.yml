@@ -401,6 +401,91 @@ jobs:
           path: artifact/NearLink_Mesh-x86_64.apk
 
   # ═══════════════════════════════════════════════════════════
+  #  Harmony — OpenHarmony arm64-v8a (Windows 交叉编译)
+  # ═══════════════════════════════════════════════════════════
+  # 需要在仓库 Settings → Variables 中配置:
+  #   OHOS_SDK_URL   — OHOS SDK 下载链接 (.zip)
+  #   QT_OHOS_URL    — Qt for OHOS 下载链接 (.zip / .tar.gz)
+  # 或直接在自托管 runner 上预装并设置:
+  #   OHOS_SDK_ROOT  — OHOS SDK 根目录
+  #   QT_OHOS_DIR    — Qt for OHOS 安装路径
+  harmony:
+    runs-on: windows-latest
+    if: vars.OHOS_SDK_URL != '' && vars.QT_OHOS_URL != ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download & extract OHOS SDK
+        shell: pwsh
+        run: |
+          $sdkZip = "$env:RUNNER_TEMP\ohos-sdk.zip"
+          Write-Host "Downloading OHOS SDK..."
+          Invoke-WebRequest -Uri "${{ vars.OHOS_SDK_URL }}" -OutFile $sdkZip
+          $sdkDir = "$env:RUNNER_TEMP\ohos-sdk"
+          Expand-Archive -Path $sdkZip -DestinationPath $sdkDir -Force
+          # 定位 native 目录
+          $nativeDir = Get-ChildItem -Path $sdkDir -Recurse -Directory -Filter "native" | Select-Object -First 1
+          if ($nativeDir) {
+            Write-Host "NATIVE_OHOS_SDK=$($nativeDir.FullName)"
+            echo "NATIVE_OHOS_SDK=$($nativeDir.FullName)" >> $env:GITHUB_ENV
+          } else {
+            Write-Host "::error::OHOS SDK native directory not found"
+            exit 1
+          }
+
+      - name: Download & extract Qt for OHOS
+        shell: pwsh
+        run: |
+          $qtArchive = "$env:RUNNER_TEMP\qt-ohos.zip"
+          Write-Host "Downloading Qt for OHOS..."
+          Invoke-WebRequest -Uri "${{ vars.QT_OHOS_URL }}" -OutFile $qtArchive
+          $qtDir = "$env:RUNNER_TEMP\qt-ohos"
+          Expand-Archive -Path $qtArchive -DestinationPath $qtDir -Force
+          # 定位 Qt 安装路径 (包含 bin/qmake 或 lib/cmake)
+          $cmakeDir = Get-ChildItem -Path $qtDir -Recurse -Directory -Filter "cmake" | Select-Object -First 1
+          if ($cmakeDir) {
+            $qtRoot = $cmakeDir.Parent.Parent.FullName
+            Write-Host "QT_OHOS_DIR=$qtRoot"
+            echo "QT_OHOS_DIR=$qtRoot" >> $env:GITHUB_ENV
+          } else {
+            Write-Host "QT_OHOS_DIR=$qtDir"
+            echo "QT_OHOS_DIR=$qtDir" >> $env:GITHUB_ENV
+          }
+
+      - name: Configure CMake (OHOS cross-compile)
+        shell: pwsh
+        run: |
+          $toolchain = "$env:NATIVE_OHOS_SDK\build\cmake\ohos.toolchain.cmake"
+          cmake -B build `
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" `
+            -DCMAKE_PREFIX_PATH="$env:QT_OHOS_DIR" `
+            -DOHOS_ARCH=arm64-v8a `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          # 收集 .so 产物
+          $so = Get-ChildItem -Path build -Recurse -Filter "libNearLink_Mesh.so" | Select-Object -First 1
+          if ($so) {
+            Copy-Item $so.FullName -Destination artifact\
+            Write-Host "Packaged: $($so.FullName)"
+          } else {
+            Write-Host "::error::libNearLink_Mesh.so not found"
+            exit 1
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-harmony-arm64
+          path: artifact/libNearLink_Mesh.so
+
+  # ═══════════════════════════════════════════════════════════
   #  Release — 自动发布 (仅 tag 触发)
   # ═══════════════════════════════════════════════════════════
   release:

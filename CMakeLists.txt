@@ -130,7 +130,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ${PROJECT_SOURCES}
     )
 else()
-    if(ANDROID)
+    if(ANDROID OR OHOS OR CMAKE_SYSTEM_NAME STREQUAL "OHOS")
         add_library(NearLink_Mesh SHARED
             ${PROJECT_SOURCES}
         )
