@@ -7,6 +7,7 @@
 #include <QTranslator>
 #include <QFont>
 #include <QIcon>
+#include <QSurfaceFormat>
 
 int main(int argc, char *argv[])
 {
@@ -15,6 +16,11 @@ int main(int argc, char *argv[])
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
+
+    // 全局多重采样抗锯齿 (4x MSAA)，减少控件边缘锯齿
+    QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
+    fmt.setSamples(4);
+    QSurfaceFormat::setDefaultFormat(fmt);
 
     QApplication a(argc, argv);
     a.setOrganizationName("wellwhz");
@@ -45,7 +51,7 @@ int main(int argc, char *argv[])
     // iOS 风格暗色主题
     a.setStyleSheet(StyleManager::loadStyleSheet());
 
-    // 全局默认字体
+    // 全局默认字体（开启抗锯齿渲染）
 #if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
     QFont defaultFont("SF Pro Display", 13);
 #elif defined(Q_OS_WIN)
@@ -53,6 +59,8 @@ int main(int argc, char *argv[])
 #else
     QFont defaultFont("Noto Sans", 10);
 #endif
+    defaultFont.setStyleStrategy(QFont::PreferAntialias);
+    defaultFont.setHintingPreference(QFont::PreferFullHinting);
     a.setFont(defaultFont);
 
     MainWindow w;
