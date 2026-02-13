@@ -200,9 +200,6 @@ jobs:
           cache: true
           set-env: false
 
-      - name: Generate app icon (1024x1024)
-        run: sips -z 1024 1024 Qt/resource/img/icon.png --out IOS/Assets.xcassets/AppIcon.appiconset/icon_1024.png
-
       - name: Configure & Build
         run: |
           QT_IOS=${{ runner.workspace }}/Qt/${{ env.QT_VERSION }}/ios
