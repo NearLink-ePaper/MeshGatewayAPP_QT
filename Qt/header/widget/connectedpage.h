@@ -28,6 +28,7 @@ public:
 signals:
     void clicked(const MeshNode &node);
 protected:
+    void paintEvent(QPaintEvent *) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 private:
     MeshNode m_node;

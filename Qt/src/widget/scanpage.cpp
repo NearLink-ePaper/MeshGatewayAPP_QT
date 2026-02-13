@@ -31,7 +31,7 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     mainLayout->addStretch(1);
 
     // 扫描按钮
-    m_scanBtn = new QPushButton(tr("Scan Mesh Gateway"), this);
+    m_scanBtn = new AAButton(tr("Scan Mesh Gateway"), this);
     m_scanBtn->setObjectName("scanButton");
     m_scanBtn->setMinimumHeight(48);
     m_scanBtn->setCursor(Qt::PointingHandCursor);
@@ -116,7 +116,7 @@ void ScanPage::refreshDeviceList()
     for (int i = 0; i < devices.size(); ++i) {
         const auto &dev = devices.at(i);
 
-        auto *widget = new QWidget();
+        auto *widget = new AAWidget();
         widget->setObjectName("deviceCard");
         auto *hLayout = new QHBoxLayout(widget);
         hLayout->setContentsMargins(14, 12, 14, 12);

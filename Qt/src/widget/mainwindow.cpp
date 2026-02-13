@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "stylemanager.h"
 
 #include <QApplication>
 #include <QVBoxLayout>
@@ -49,7 +50,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupTopBar()
 {
-    auto *topBar = new QWidget(this);
+    auto *topBar = new AAWidget(this);
     topBar->setObjectName("topBar");
     topBar->setFixedHeight(52);
 

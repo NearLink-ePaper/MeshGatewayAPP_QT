@@ -3,6 +3,8 @@
 
 #include <QString>
 #include <QPixmap>
+#include <QWidget>
+#include <QPushButton>
 
 /**
  * 全局样式管理 — 加载 iOS 风格 QSS 样式表
@@ -18,6 +20,22 @@ public:
 
     /// 密度无关像素: 将逻辑像素乘以 devicePixelRatio 后取整
     static int dp(int logicalPx);
+};
+
+/// 抗锯齿 QWidget: 绘制 QSS 背景/边框时启用 QPainter::Antialiasing
+class AAWidget : public QWidget {
+public:
+    using QWidget::QWidget;
+protected:
+    void paintEvent(QPaintEvent *) override;
+};
+
+/// 抗锯齿 QPushButton: 绘制按钮时启用 QPainter::Antialiasing
+class AAButton : public QPushButton {
+public:
+    using QPushButton::QPushButton;
+protected:
+    void paintEvent(QPaintEvent *) override;
 };
 
 #endif // STYLEMANAGER_H

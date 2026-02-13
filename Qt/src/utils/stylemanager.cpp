@@ -3,6 +3,9 @@
 #include <QTextStream>
 #include <QGuiApplication>
 #include <QtMath>
+#include <QPainter>
+#include <QStyleOption>
+#include <QStylePainter>
 
 QString StyleManager::loadStyleSheet()
 {
@@ -29,6 +32,26 @@ int StyleManager::dp(int logicalPx)
 {
     qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
     return qCeil(logicalPx * dpr);
+}
+
+// ─── AAWidget ────────────────────────────────────────────
+void AAWidget::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    QStyleOption opt;
+    opt.initFrom(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+}
+
+// ─── AAButton ────────────────────────────────────────────
+void AAButton::paintEvent(QPaintEvent *)
+{
+    QStylePainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    QStyleOptionButton opt;
+    initStyleOption(&opt);
+    p.drawControl(QStyle::CE_PushButton, opt);
 }
 
 QString StyleManager::darkThemeStyleSheet()

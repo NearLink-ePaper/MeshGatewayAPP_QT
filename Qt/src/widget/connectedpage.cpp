@@ -3,8 +3,11 @@
 #include <QDateTime>
 #include <QFrame>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QPalette>
 #include <QScrollBar>
 #include <QStyle>
+#include <QStyleOption>
 
 // ─── NodeCardWidget ─────────────────────────────────────
 
@@ -57,6 +60,15 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
     layout->addWidget(sendIcon);
 }
 
+void NodeCardWidget::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    QStyleOption opt;
+    opt.initFrom(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+}
+
 void NodeCardWidget::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
@@ -81,7 +93,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->addWidget(m_debugLabel);
 
     // 设备信息卡片
-    auto *deviceCard = new QWidget(this);
+    auto *deviceCard = new AAWidget(this);
     deviceCard->setObjectName("deviceInfoCard");
     auto *deviceLayout = new QHBoxLayout(deviceCard);
     deviceLayout->setContentsMargins(12, 10, 12, 10);
@@ -95,7 +107,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     infoLayout->addWidget(m_gwAddrLabel);
     deviceLayout->addLayout(infoLayout, 1);
 
-    m_disconnectBtn = new QPushButton(tr("Disconnect"), this);
+    m_disconnectBtn = new AAButton(tr("Disconnect"), this);
     m_disconnectBtn->setObjectName("disconnectBtn");
     m_disconnectBtn->setCursor(Qt::PointingHandCursor);
     connect(m_disconnectBtn, &QPushButton::clicked, this, &ConnectedPage::onDisconnectClicked);
@@ -104,7 +116,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->addWidget(deviceCard);
 
     // 查询拓扑按钮
-    m_queryTopoBtn = new QPushButton(tr("Query Nodes"), this);
+    m_queryTopoBtn = new AAButton(tr("Query Nodes"), this);
     m_queryTopoBtn->setObjectName("queryTopoBtn");
     m_queryTopoBtn->setMinimumHeight(40);
     m_queryTopoBtn->setCursor(Qt::PointingHandCursor);
@@ -132,7 +144,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->addWidget(m_nodeScroll);
 
     // 广播输入区域
-    auto *broadcastCard = new QWidget(this);
+    auto *broadcastCard = new AAWidget(this);
     broadcastCard->setObjectName("broadcastCard");
     auto *bcastLayout = new QHBoxLayout(broadcastCard);
     bcastLayout->setContentsMargins(8, 6, 8, 6);
@@ -143,10 +155,15 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
     m_broadcastInput->setAttribute(Qt::WA_InputMethodEnabled, true);
     m_broadcastInput->setInputMethodHints(Qt::ImhNone);
+    // IME 预编辑文字高亮色，避免深色背景下看不清
+    QPalette inputPal = m_broadcastInput->palette();
+    inputPal.setColor(QPalette::Highlight, QColor(88, 166, 255, 140));
+    inputPal.setColor(QPalette::HighlightedText, Qt::white);
+    m_broadcastInput->setPalette(inputPal);
     connect(m_broadcastInput, &QLineEdit::returnPressed, this, &ConnectedPage::onBroadcastClicked);
     bcastLayout->addWidget(m_broadcastInput, 1);
 
-    m_broadcastBtn = new QPushButton(tr("Send"), this);
+    m_broadcastBtn = new AAButton(tr("Send"), this);
     m_broadcastBtn->setObjectName("broadcastBtn");
     m_broadcastBtn->setCursor(Qt::PointingHandCursor);
     connect(m_broadcastBtn, &QPushButton::clicked, this, &ConnectedPage::onBroadcastClicked);
@@ -168,7 +185,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->addLayout(logHeader);
 
     // 通信日志容器
-    auto *logContainer = new QWidget(this);
+    auto *logContainer = new AAWidget(this);
     logContainer->setObjectName("logContainer");
     auto *logContainerLayout = new QVBoxLayout(logContainer);
     logContainerLayout->setContentsMargins(6, 6, 6, 6);
