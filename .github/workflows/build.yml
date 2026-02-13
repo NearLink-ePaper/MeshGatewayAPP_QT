@@ -417,7 +417,7 @@ jobs:
     timeout-minutes: 180
     env:
       OHOS_ARCH: arm64-v8a
-      OHOS_SDK_URL: https://repo.huaweicloud.com/openharmony/os/6.0-Release/ohos-sdk-windows_linux-public.tar.gz
+      OHOS_SDK_URL: https://github.com/NearLink-ePaper/ohos-sdk/releases/download/6.0-Release/native-linux-x64-6.0.0.47-Beta1.tar.xz
     steps:
       - uses: actions/checkout@v4
 
@@ -437,35 +437,24 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/ohos-sdk
-          key: ohos-sdk-${{ env.OHOS_ARCH }}-6.0-Release-v2
+          key: ohos-sdk-${{ env.OHOS_ARCH }}-6.0-Release-v3
 
       - name: Download & extract OHOS SDK
         if: steps.ohos-sdk-cache.outputs.cache-hit != 'true'
         run: |
-          wget -q "${{ env.OHOS_SDK_URL }}" -O /tmp/ohos-sdk.tar.gz
-          mkdir -p /tmp/ohos-sdk-raw
-          tar -xzf /tmp/ohos-sdk.tar.gz -C /tmp/ohos-sdk-raw
-          rm /tmp/ohos-sdk.tar.gz
+          wget -q "${{ env.OHOS_SDK_URL }}" -O /tmp/ohos-sdk.tar.xz
+          sudo mkdir -p /opt/ohos-sdk
+          # 解压后直接是 native/ 文件夹
+          tar -xJf /tmp/ohos-sdk.tar.xz -C /opt/ohos-sdk
+          rm /tmp/ohos-sdk.tar.xz
 
-          # tar.gz 内含 linux/ 目录，native SDK 以 native*.zip 形式存放
-          NATIVE_ZIP=$(find /tmp/ohos-sdk-raw -path "*/linux/native*.zip" | head -1)
-          if [ -z "$NATIVE_ZIP" ]; then
-            echo "::error::native*.zip not found in SDK archive"
-            find /tmp/ohos-sdk-raw -type f | head -20
+          # 验证
+          if [ ! -d /opt/ohos-sdk/native/llvm/bin ]; then
+            echo "::error::SDK structure unexpected"
+            ls -la /opt/ohos-sdk/ && ls -la /opt/ohos-sdk/native/ 2>/dev/null || true
             exit 1
           fi
-          unzip -q "$NATIVE_ZIP" -d /tmp/ohos-sdk-native
-
-          NATIVE_DIR=$(find /tmp/ohos-sdk-native -type d -name "native" | head -1)
-          if [ -z "$NATIVE_DIR" ]; then
-            echo "::error::native/ directory not found after unzip"
-            exit 1
-          fi
-
-          # 保留 native/ 子目录结构: /opt/ohos-sdk/native/llvm/...
-          sudo mkdir -p /opt/ohos-sdk/native
-          sudo cp -a "$NATIVE_DIR"/. /opt/ohos-sdk/native/
-          rm -rf /tmp/ohos-sdk-raw /tmp/ohos-sdk-native
+          echo "OK: /opt/ohos-sdk/native/llvm/bin exists"
 
       - name: Set OHOS SDK environment
         run: |
