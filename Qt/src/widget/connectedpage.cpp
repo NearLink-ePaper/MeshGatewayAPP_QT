@@ -3,16 +3,13 @@
 #include <QDateTime>
 #include <QFrame>
 #include <QMouseEvent>
-#include <QPainter>
 #include <QPalette>
 #include <QScrollBar>
-#include <QStyle>
-#include <QStyleOption>
 
 // ─── NodeCardWidget ─────────────────────────────────────
 
 NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
-    : QWidget(parent), m_node(node)
+    : AAWidget(parent), m_node(node)
 {
     setObjectName("nodeCard");
     setCursor(Qt::PointingHandCursor);
@@ -58,15 +55,6 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
     auto *sendIcon = new QLabel(QStringLiteral("\u27A4"), this); // ➤
     sendIcon->setObjectName("sendIcon");
     layout->addWidget(sendIcon);
-}
-
-void NodeCardWidget::paintEvent(QPaintEvent *)
-{
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    QStyleOption opt;
-    opt.initFrom(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 void NodeCardWidget::mouseReleaseEvent(QMouseEvent *event)
@@ -177,7 +165,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     logTitle->setObjectName("logTitle");
     logHeader->addWidget(logTitle);
     logHeader->addStretch();
-    auto *clearLogBtn = new QPushButton(tr("Clear"), this);
+    auto *clearLogBtn = new AAButton(tr("Clear"), this);
     clearLogBtn->setObjectName("clearLogBtn");
     clearLogBtn->setCursor(Qt::PointingHandCursor);
     connect(clearLogBtn, &QPushButton::clicked, this, &ConnectedPage::onClearLogClicked);

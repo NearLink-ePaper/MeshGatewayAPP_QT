@@ -4,8 +4,7 @@
 #include <QGuiApplication>
 #include <QtMath>
 #include <QPainter>
-#include <QStyleOption>
-#include <QStylePainter>
+#include <QPainterPath>
 
 QString StyleManager::loadStyleSheet()
 {
@@ -37,21 +36,60 @@ int StyleManager::dp(int logicalPx)
 // ─── AAWidget ────────────────────────────────────────────
 void AAWidget::paintEvent(QPaintEvent *)
 {
+    if (m_radius <= 0 && m_bg == Qt::transparent && m_border == Qt::transparent)
+        return;                       // 无需自定义绘制
+
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
-    QStyleOption opt;
-    opt.initFrom(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+
+    const qreal hw = m_borderW / 2.0; // 边框半宽，向内收缩避免裁切
+    QRectF r = QRectF(rect()).adjusted(hw, hw, -hw, -hw);
+
+    QPainterPath path;
+    path.addRoundedRect(r, m_radius, m_radius);
+
+    if (m_bg.alpha() > 0) {
+        p.fillPath(path, m_bg);
+    }
+    if (m_borderW > 0 && m_border.alpha() > 0) {
+        p.setPen(QPen(m_border, m_borderW));
+        p.drawPath(path);
+    }
 }
 
 // ─── AAButton ────────────────────────────────────────────
 void AAButton::paintEvent(QPaintEvent *)
 {
-    QStylePainter p(this);
+    QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
-    QStyleOptionButton opt;
-    initStyleOption(&opt);
-    p.drawControl(QStyle::CE_PushButton, opt);
+
+    // 根据按钮状态微调背景色
+    QColor bg = m_bg;
+    if (!isEnabled()) {
+        bg.setAlphaF(bg.alphaF() * 0.3);
+    } else if (isDown() && bg.alpha() > 0) {
+        bg = bg.darker(130);
+    } else if (underMouse() && bg.alpha() > 0) {
+        bg = bg.lighter(115);
+    }
+
+    const qreal hw = m_borderW / 2.0;
+    QRectF r = QRectF(rect()).adjusted(hw, hw, -hw, -hw);
+
+    QPainterPath path;
+    path.addRoundedRect(r, m_radius, m_radius);
+
+    if (bg.alpha() > 0)
+        p.fillPath(path, bg);
+
+    if (m_borderW > 0 && m_border.alpha() > 0) {
+        p.setPen(QPen(m_border, m_borderW));
+        p.drawPath(path);
+    }
+
+    // 绘制按钮文字（居中）
+    p.setPen(palette().color(isEnabled() ? QPalette::ButtonText : QPalette::Mid));
+    p.drawText(rect(), Qt::AlignCenter, text());
 }
 
 QString StyleManager::darkThemeStyleSheet()
@@ -63,19 +101,19 @@ QWidget#topBar { background-color:#161B22; border-bottom:1px solid rgba(240,246,
 QLabel#appTitle { color:#FFF; font-size:17px; font-weight:600; }
 QLabel#statusDot { min-width:10px; max-width:10px; min-height:10px; max-height:10px; border-radius:5px; }
 QLabel#debugLabel { background-color:#161B22; color:#D29922; font-family:monospace; font-size:11px; padding:10px 12px; border:1px solid rgba(210,153,34,0.15); border-radius:10px; }
-QPushButton#scanButton { background-color:#238636; color:#FFF; font-size:14px; font-weight:600; border:1px solid rgba(63,185,80,0.4); border-radius:10px; padding:12px 24px; }
-QPushButton#scanButton:disabled { background-color:#21262D; color:#484F58; }
+AAButton#scanButton { background-color:transparent; border:none; color:#FFF; font-size:14px; font-weight:600; padding:12px 24px; qproperty-bgColor:#238636; qproperty-borderColor:#663FB950; qproperty-borderRadius:10; qproperty-borderWidth:1; }
+AAButton#scanButton:disabled { color:#484F58; }
 QLabel#hintLabel { color:#484F58; font-size:13px; padding:48px 24px; }
 QListWidget#deviceList { background-color:transparent; border:none; }
 QListWidget#deviceList::item { background-color:#161B22; border:1px solid rgba(240,246,252,0.06); border-radius:12px; margin:3px 0; }
-QWidget#deviceInfoCard { background-color:#161B22; border:1px solid rgba(63,185,80,0.2); border-radius:12px; }
-QPushButton#disconnectBtn { background-color:rgba(248,81,73,0.1); color:#F85149; border:1px solid rgba(248,81,73,0.25); border-radius:8px; padding:6px 16px; }
-QPushButton#queryTopoBtn { background-color:#21262D; color:#58A6FF; border:1px solid rgba(88,166,255,0.25); border-radius:10px; padding:10px; font-weight:600; }
-QWidget#nodeCard { background-color:#161B22; border:1px solid rgba(240,246,252,0.06); border-radius:10px; }
-QWidget#broadcastCard { background-color:#161B22; border:1px solid rgba(240,246,252,0.06); border-radius:10px; }
+AAWidget#deviceInfoCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#333FB950; qproperty-borderRadius:12; qproperty-borderWidth:1; }
+AAButton#disconnectBtn { background-color:transparent; border:none; color:#F85149; padding:6px 16px; qproperty-bgColor:#1AF85149; qproperty-borderColor:#40F85149; qproperty-borderRadius:8; qproperty-borderWidth:1; }
+AAButton#queryTopoBtn { background-color:transparent; border:none; color:#58A6FF; padding:10px; font-weight:600; qproperty-bgColor:#21262D; qproperty-borderColor:#4058A6FF; qproperty-borderRadius:10; qproperty-borderWidth:1; }
+AAWidget#nodeCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
+AAWidget#broadcastCard { background-color:transparent; border:none; qproperty-bgColor:#161B22; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 QLineEdit#broadcastInput,QLineEdit#sendDialogInput { background-color:#0D1117; color:#E6EDF3; border:1px solid rgba(240,246,252,0.1); border-radius:8px; padding:9px 12px; }
-QPushButton#broadcastBtn,QPushButton#sendDialogSend { background-color:#238636; color:#FFF; border:1px solid rgba(63,185,80,0.4); border-radius:8px; padding:9px 20px; font-weight:600; }
-QWidget#logContainer { background-color:#0D1117; border:1px solid rgba(240,246,252,0.06); border-radius:10px; }
+AAButton#broadcastBtn,AAButton#sendDialogSend { background-color:transparent; border:none; color:#FFF; padding:9px 20px; font-weight:600; qproperty-bgColor:#238636; qproperty-borderColor:#663FB950; qproperty-borderRadius:8; qproperty-borderWidth:1; }
+AAWidget#logContainer { background-color:transparent; border:none; qproperty-bgColor:#0D1117; qproperty-borderColor:#0FF0F6FC; qproperty-borderRadius:10; qproperty-borderWidth:1; }
 QListWidget#logList { background-color:transparent; border:none; font-family:monospace; font-size:11px; }
 QScrollBar:vertical { background:transparent; width:6px; }
 QScrollBar::handle:vertical { background:rgba(139,148,158,0.25); border-radius:3px; min-height:40px; }

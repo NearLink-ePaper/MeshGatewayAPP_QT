@@ -13,13 +13,14 @@
 
 #include "blemanager.h"
 #include "meshprotocol.h"
+#include "stylemanager.h"
 
 class QMouseEvent;
 
 /**
  * 可点击的节点卡片 — 封装 MeshNode 并发出 clicked 信号
  */
-class NodeCardWidget : public QWidget
+class NodeCardWidget : public AAWidget
 {
     Q_OBJECT
 public:
@@ -28,7 +29,6 @@ public:
 signals:
     void clicked(const MeshNode &node);
 protected:
-    void paintEvent(QPaintEvent *) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
 private:
     MeshNode m_node;
@@ -69,13 +69,13 @@ private:
     QLabel            *m_debugLabel;
     QLabel            *m_deviceNameLabel;
     QLabel            *m_gwAddrLabel;
-    QPushButton       *m_disconnectBtn;
-    QPushButton       *m_queryTopoBtn;
+    AAButton          *m_disconnectBtn;
+    AAButton          *m_queryTopoBtn;
     QVBoxLayout       *m_nodeListLayout;
     QWidget           *m_nodeListContainer;
     QScrollArea       *m_nodeScroll;
     QLineEdit         *m_broadcastInput;
-    QPushButton       *m_broadcastBtn;
+    AAButton          *m_broadcastBtn;
     QListWidget       *m_logList;
 
     quint16            m_gwAddr = 0;

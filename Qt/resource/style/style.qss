@@ -59,26 +59,20 @@ QLabel#debugLabel {
 }
 
 /* ─── Scan Button ──────────────────────────────────── */
-QPushButton#scanButton {
-    background-color: #238636;
+AAButton#scanButton {
+    background-color: transparent;
+    border: none;
     color: #FFFFFF;
     font-size: 14px;
     font-weight: 600;
-    border: 1px solid rgba(63, 185, 80, 0.4);
-    border-radius: 10px;
     padding: 12px 24px;
+    qproperty-bgColor: #238636;
+    qproperty-borderColor: #663FB950;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
-QPushButton#scanButton:hover {
-    background-color: #2EA043;
-    border-color: rgba(63, 185, 80, 0.6);
-}
-QPushButton#scanButton:pressed {
-    background-color: #196C2E;
-}
-QPushButton#scanButton:disabled {
-    background-color: #21262D;
+AAButton#scanButton:disabled {
     color: #484F58;
-    border-color: rgba(240, 246, 252, 0.06);
 }
 
 /* ─── Hint Label ───────────────────────────────────── */
@@ -107,7 +101,7 @@ QListWidget#deviceList::item:hover {
 }
 
 /* ─── Device Card ──────────────────────────────────── */
-QWidget#deviceCard {
+AAWidget#deviceCard {
     background-color: transparent;
 }
 QLabel#deviceIcon {
@@ -138,10 +132,13 @@ QLabel#rssiWeak {
 }
 
 /* ─── Device Info Card ─────────────────────────────── */
-QWidget#deviceInfoCard {
-    background-color: #161B22;
-    border: 1px solid rgba(63, 185, 80, 0.2);
-    border-radius: 12px;
+AAWidget#deviceInfoCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #333FB950;
+    qproperty-borderRadius: 12;
+    qproperty-borderWidth: 1;
 }
 QLabel#connDeviceName {
     color: #E6EDF3;
@@ -155,60 +152,49 @@ QLabel#connGwAddr {
 }
 
 /* ─── Disconnect Button ────────────────────────────── */
-QPushButton#disconnectBtn {
-    background-color: rgba(248, 81, 73, 0.1);
+AAButton#disconnectBtn {
+    background-color: transparent;
+    border: none;
     color: #F85149;
-    border: 1px solid rgba(248, 81, 73, 0.25);
-    border-radius: 8px;
     padding: 6px 16px;
     font-size: 12px;
     font-weight: 600;
-}
-QPushButton#disconnectBtn:hover {
-    background-color: rgba(248, 81, 73, 0.2);
-    border-color: rgba(248, 81, 73, 0.4);
-}
-QPushButton#disconnectBtn:pressed {
-    background-color: rgba(248, 81, 73, 0.3);
+    qproperty-bgColor: #1AF85149;
+    qproperty-borderColor: #40F85149;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
 }
 
 /* ─── Query Topology Button ────────────────────────── */
-QPushButton#queryTopoBtn {
-    background-color: #21262D;
+AAButton#queryTopoBtn {
+    background-color: transparent;
+    border: none;
     color: #58A6FF;
     font-size: 13px;
     font-weight: 600;
-    border: 1px solid rgba(88, 166, 255, 0.25);
-    border-radius: 10px;
     padding: 10px;
-}
-QPushButton#queryTopoBtn:hover {
-    background-color: #292E36;
-    border-color: rgba(88, 166, 255, 0.45);
-    color: #79C0FF;
-}
-QPushButton#queryTopoBtn:pressed {
-    background-color: #1C2128;
+    qproperty-bgColor: #21262D;
+    qproperty-borderColor: #4058A6FF;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
 
 /* ─── Node Card ────────────────────────────────────── */
-QWidget#nodeCard {
-    background-color: #161B22;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 10px;
+AAWidget#nodeCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
-QWidget#nodeCard:hover {
-    background-color: #1C2128;
-    border-color: rgba(240, 246, 252, 0.12);
-}
-QWidget#nodeCardSelected {
-    background-color: #1C2128;
-    border: 1px solid rgba(88, 166, 255, 0.5);
-    border-radius: 10px;
-}
-QWidget#nodeCardSelected:hover {
-    background-color: #21262D;
-    border-color: rgba(88, 166, 255, 0.7);
+AAWidget#nodeCardSelected {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #1C2128;
+    qproperty-borderColor: #8058A6FF;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
 
 QWidget#nodeIconGateway {
@@ -242,10 +228,13 @@ QLabel#hopMulti   { color: #D29922; font-size: 11px; }
 QLabel#sendIcon   { color: #484F58; font-size: 14px; }
 
 /* ─── Broadcast Card ───────────────────────────────── */
-QWidget#broadcastCard {
-    background-color: #161B22;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 10px;
+AAWidget#broadcastCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
 
 QLineEdit#broadcastInput, QLineEdit#sendDialogInput {
@@ -265,21 +254,17 @@ QLineEdit#broadcastInput::placeholder, QLineEdit#sendDialogInput::placeholder {
     color: #484F58;
 }
 
-QPushButton#broadcastBtn, QPushButton#sendDialogSend {
-    background-color: #238636;
+AAButton#broadcastBtn, AAButton#sendDialogSend {
+    background-color: transparent;
+    border: none;
     color: #FFFFFF;
-    border: 1px solid rgba(63, 185, 80, 0.4);
-    border-radius: 8px;
     padding: 9px 20px;
     font-weight: 600;
     font-size: 13px;
-}
-QPushButton#broadcastBtn:hover, QPushButton#sendDialogSend:hover {
-    background-color: #2EA043;
-    border-color: rgba(63, 185, 80, 0.6);
-}
-QPushButton#broadcastBtn:pressed, QPushButton#sendDialogSend:pressed {
-    background-color: #196C2E;
+    qproperty-bgColor: #238636;
+    qproperty-borderColor: #663FB950;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
 }
 
 /* ─── Log Area ─────────────────────────────────────── */
@@ -291,26 +276,24 @@ QLabel#logTitle {
     text-transform: uppercase;
 }
 
-QPushButton#clearLogBtn {
+AAButton#clearLogBtn {
     background-color: transparent;
+    border: none;
     color: #484F58;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 6px;
     padding: 3px 10px;
     font-size: 11px;
-}
-QPushButton#clearLogBtn:hover {
-    color: #8B949E;
-    border-color: rgba(240, 246, 252, 0.15);
-}
-QPushButton#clearLogBtn:pressed {
-    background-color: rgba(240, 246, 252, 0.04);
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 6;
+    qproperty-borderWidth: 1;
 }
 
-QWidget#logContainer {
-    background-color: #0D1117;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 10px;
+AAWidget#logContainer {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #0D1117;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
 }
 
 QListWidget#logList {
@@ -341,18 +324,17 @@ QLabel#sendDialogDesc {
     color: #8B949E;
     font-size: 12px;
 }
-QPushButton#sendDialogCancel {
-    background-color: #21262D;
+AAButton#sendDialogCancel {
+    background-color: transparent;
+    border: none;
     color: #8B949E;
-    border: 1px solid rgba(240, 246, 252, 0.06);
-    border-radius: 8px;
     padding: 8px 20px;
     font-size: 13px;
     font-weight: 600;
-}
-QPushButton#sendDialogCancel:hover {
-    color: #E6EDF3;
-    border-color: rgba(240, 246, 252, 0.15);
+    qproperty-bgColor: #21262D;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
 }
 
 /* ─── Connecting Page ──────────────────────────────── */

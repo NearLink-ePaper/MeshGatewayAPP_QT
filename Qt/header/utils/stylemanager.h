@@ -5,6 +5,7 @@
 #include <QPixmap>
 #include <QWidget>
 #include <QPushButton>
+#include <QColor>
 
 /**
  * 全局样式管理 — 加载 iOS 风格 QSS 样式表
@@ -22,20 +23,72 @@ public:
     static int dp(int logicalPx);
 };
 
-/// 抗锯齿 QWidget: 绘制 QSS 背景/边框时启用 QPainter::Antialiasing
+/**
+ * 抗锯齿 QWidget — 手动绘制圆角背景/边框，完全绕过 QSS border-radius
+ * 在 QSS 中使用 qproperty-* 设置视觉属性:
+ *   qproperty-bgColor, qproperty-borderColor,
+ *   qproperty-borderRadius, qproperty-borderWidth
+ */
 class AAWidget : public QWidget {
+    Q_OBJECT
+    Q_PROPERTY(QColor bgColor      READ bgColor      WRITE setBgColor)
+    Q_PROPERTY(QColor borderColor   READ borderColor   WRITE setBorderColor)
+    Q_PROPERTY(int    borderRadius  READ borderRadius  WRITE setBorderRadius)
+    Q_PROPERTY(int    borderWidth   READ borderWidth   WRITE setBorderWidth)
 public:
     using QWidget::QWidget;
+
+    QColor bgColor()      const { return m_bg; }
+    QColor borderColor()  const { return m_border; }
+    int    borderRadius() const { return m_radius; }
+    int    borderWidth()  const { return m_borderW; }
+
+    void setBgColor(const QColor &c)     { m_bg = c; update(); }
+    void setBorderColor(const QColor &c) { m_border = c; update(); }
+    void setBorderRadius(int r)          { m_radius = r; update(); }
+    void setBorderWidth(int w)           { m_borderW = w; update(); }
+
 protected:
     void paintEvent(QPaintEvent *) override;
+
+private:
+    QColor m_bg      = Qt::transparent;
+    QColor m_border  = Qt::transparent;
+    int    m_radius  = 0;
+    int    m_borderW = 0;
 };
 
-/// 抗锯齿 QPushButton: 绘制按钮时启用 QPainter::Antialiasing
+/**
+ * 抗锯齿 QPushButton — 手动绘制圆角背景/边框
+ * 在 QSS 中使用 qproperty-* 设置视觉属性
+ */
 class AAButton : public QPushButton {
+    Q_OBJECT
+    Q_PROPERTY(QColor bgColor      READ bgColor      WRITE setBgColor)
+    Q_PROPERTY(QColor borderColor   READ borderColor   WRITE setBorderColor)
+    Q_PROPERTY(int    borderRadius  READ borderRadius  WRITE setBorderRadius)
+    Q_PROPERTY(int    borderWidth   READ borderWidth   WRITE setBorderWidth)
 public:
     using QPushButton::QPushButton;
+
+    QColor bgColor()      const { return m_bg; }
+    QColor borderColor()  const { return m_border; }
+    int    borderRadius() const { return m_radius; }
+    int    borderWidth()  const { return m_borderW; }
+
+    void setBgColor(const QColor &c)     { m_bg = c; update(); }
+    void setBorderColor(const QColor &c) { m_border = c; update(); }
+    void setBorderRadius(int r)          { m_radius = r; update(); }
+    void setBorderWidth(int w)           { m_borderW = w; update(); }
+
 protected:
     void paintEvent(QPaintEvent *) override;
+
+private:
+    QColor m_bg      = Qt::transparent;
+    QColor m_border  = Qt::transparent;
+    int    m_radius  = 0;
+    int    m_borderW = 0;
 };
 
 #endif // STYLEMANAGER_H

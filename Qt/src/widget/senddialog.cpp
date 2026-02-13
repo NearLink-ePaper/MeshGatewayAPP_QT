@@ -1,4 +1,5 @@
 #include "senddialog.h"
+#include "stylemanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QDialogButtonBox>
@@ -37,7 +38,7 @@ SendDialog::SendDialog(const MeshNode &node, QWidget *parent)
     auto *btnLayout = new QHBoxLayout();
     btnLayout->setSpacing(12);
 
-    auto *cancelBtn = new QPushButton(tr("Cancel"), this);
+    auto *cancelBtn = new AAButton(tr("Cancel"), this);
     cancelBtn->setObjectName("sendDialogCancel");
     cancelBtn->setCursor(Qt::PointingHandCursor);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
@@ -45,7 +46,7 @@ SendDialog::SendDialog(const MeshNode &node, QWidget *parent)
 
     btnLayout->addStretch();
 
-    auto *sendBtn = new QPushButton(tr("Send"), this);
+    auto *sendBtn = new AAButton(tr("Send"), this);
     sendBtn->setObjectName("sendDialogSend");
     sendBtn->setCursor(Qt::PointingHandCursor);
     sendBtn->setDefault(true);

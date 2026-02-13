@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "blemanager.h"
+#include "stylemanager.h"
 
 /**
  * 扫描页面 — 扫描按钮 + 网关设备列表
@@ -37,7 +38,7 @@ private:
 
     BleManager  *m_ble;
     QLabel      *m_debugLabel;
-    QPushButton *m_scanBtn;
+    AAButton    *m_scanBtn;
     QListWidget *m_deviceList;
     QLabel      *m_hintLabel;
     QTimer       m_countdownTimer;
