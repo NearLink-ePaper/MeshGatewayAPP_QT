@@ -126,8 +126,8 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_nodeListLayout->setContentsMargins(0, 0, 0, 0);
     m_nodeScroll->setWidget(m_nodeListContainer);
 
-    // 移动端触摸滚动
-    QScroller::grabGesture(m_nodeScroll->viewport(), QScroller::LeftMouseButtonGesture);
+    // 移动端触摸滚动（使用 TouchGesture 避免拦截 QLineEdit 输入法事件）
+    QScroller::grabGesture(m_nodeScroll->viewport(), QScroller::TouchGesture);
 
     mainLayout->addWidget(m_nodeScroll);
 
@@ -141,6 +141,8 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_broadcastInput = new QLineEdit(this);
     m_broadcastInput->setObjectName("broadcastInput");
     m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
+    m_broadcastInput->setAttribute(Qt::WA_InputMethodEnabled, true);
+    m_broadcastInput->setInputMethodHints(Qt::ImhNone);
     connect(m_broadcastInput, &QLineEdit::returnPressed, this, &ConnectedPage::onBroadcastClicked);
     bcastLayout->addWidget(m_broadcastInput, 1);
 
