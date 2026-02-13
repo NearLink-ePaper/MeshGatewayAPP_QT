@@ -172,17 +172,18 @@ endif()
 if(IOS AND DEFINED IOS_INFO_PLIST)
     set_target_properties(NearLink_Mesh PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${IOS_INFO_PLIST}"
+        XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "wellwhz"
+        XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Apple Development"
+        XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "cn.wellwhz.nearlinkmesh"
     )
 endif()
 
 # ─── 目标属性 ────────────────────────────────────────────
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-    set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER cn.wellwhz.nearlinkmesh)
-endif()
 set_target_properties(NearLink_Mesh PROPERTIES
-    ${BUNDLE_ID_OPTION}
+    MACOSX_BUNDLE_GUI_IDENTIFIER cn.wellwhz.nearlinkmesh
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    MACOSX_BUNDLE_COPYRIGHT "Copyright © 2025 wellwhz. All rights reserved."
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
