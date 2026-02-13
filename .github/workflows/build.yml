@@ -437,7 +437,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/ohos-sdk
-          key: ohos-sdk-${{ env.OHOS_ARCH }}-6.0-Release
+          key: ohos-sdk-${{ env.OHOS_ARCH }}-6.0-Release-v2
 
       - name: Download & extract OHOS SDK
         if: steps.ohos-sdk-cache.outputs.cache-hit != 'true'
@@ -462,16 +462,18 @@ jobs:
             exit 1
           fi
 
-          sudo mkdir -p /opt/ohos-sdk
-          sudo cp -a "$NATIVE_DIR"/. /opt/ohos-sdk/
+          # 保留 native/ 子目录结构: /opt/ohos-sdk/native/llvm/...
+          sudo mkdir -p /opt/ohos-sdk/native
+          sudo cp -a "$NATIVE_DIR"/. /opt/ohos-sdk/native/
           rm -rf /tmp/ohos-sdk-raw /tmp/ohos-sdk-native
 
       - name: Set OHOS SDK environment
         run: |
-          echo "NATIVE_OHOS_SDK=/opt/ohos-sdk"          >> $GITHUB_ENV
-          echo "OHOS_SDK_SYSROOT=/opt/ohos-sdk/sysroot"  >> $GITHUB_ENV
-          echo "LLVM_INSTALL_DIR=/opt/ohos-sdk/llvm"      >> $GITHUB_ENV
-          echo "/opt/ohos-sdk/llvm/bin" >> $GITHUB_PATH
+          echo "OHOS_SDK_PATH=/opt/ohos-sdk"                    >> $GITHUB_ENV
+          echo "NATIVE_OHOS_SDK=/opt/ohos-sdk/native"            >> $GITHUB_ENV
+          echo "OHOS_SDK_SYSROOT=/opt/ohos-sdk/native/sysroot"   >> $GITHUB_ENV
+          echo "LLVM_INSTALL_DIR=/opt/ohos-sdk/native/llvm"      >> $GITHUB_ENV
+          echo "/opt/ohos-sdk/native/llvm/bin" >> $GITHUB_PATH
 
       # ── 编译 Qt 库 (带缓存) ──────────────────────────────
       # 流程: 1) 克隆官方 Qt 5.15 源码  2) 应用 OpenHarmony 补丁  3) 编译安装
