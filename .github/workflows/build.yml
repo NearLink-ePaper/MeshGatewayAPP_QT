@@ -1,0 +1,384 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  QT_VERSION: '6.8.2'
+  BUILD_TYPE: Release
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  #  Windows — MSVC x64
+  # ═══════════════════════════════════════════════════════════
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (Windows MSVC)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtconnectivity
+
+      - name: Configure CMake
+        run: >
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }}
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package
+        run: |
+          mkdir -p artifact
+          cp build/${{ env.BUILD_TYPE }}/NearLink_Mesh.exe artifact/
+          cd artifact
+          windeployqt --release --no-translations NearLink_Mesh.exe
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-windows-x64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  Linux — x64
+  # ═══════════════════════════════════════════════════════════
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev libglib2.0-dev \
+            libbluetooth-dev libdbus-1-dev \
+            libxkbcommon-dev libxcb-xkb-dev \
+            libfuse2
+
+      - name: Install Qt (Linux)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtconnectivity
+
+      - name: Configure & Build
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }}
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package (AppImage)
+        run: |
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/256x256/apps
+
+          cp build/NearLink_Mesh AppDir/usr/bin/
+
+          cat > AppDir/usr/share/applications/nearlink-mesh.desktop << 'EOF'
+          [Desktop Entry]
+          Name=NearLink Mesh
+          Exec=NearLink_Mesh
+          Icon=nearlink-mesh
+          Type=Application
+          Categories=Utility;
+          EOF
+
+          # Download linuxdeployqt
+          wget -q https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage -O linuxdeployqt
+          chmod +x linuxdeployqt
+          ./linuxdeployqt AppDir/usr/share/applications/nearlink-mesh.desktop -appimage -extra-plugins=bluetooth || true
+
+          mkdir -p artifact
+          cp NearLink_Mesh*.AppImage artifact/ 2>/dev/null || cp build/NearLink_Mesh artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-linux-x64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  macOS — Universal (x64 + arm64)
+  # ═══════════════════════════════════════════════════════════
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (macOS)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: qtconnectivity
+
+      - name: Configure & Build (Universal)
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }}
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Package (.dmg)
+        run: |
+          cd build
+          macdeployqt NearLink_Mesh.app -dmg || true
+          mkdir -p ../artifact
+          cp NearLink_Mesh.dmg ../artifact/ 2>/dev/null || cp -r NearLink_Mesh.app ../artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-macos-universal
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  iOS — arm64
+  # ═══════════════════════════════════════════════════════════
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt (iOS)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: ios
+          modules: qtconnectivity
+
+      - name: Install Qt (Host tools)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          set-env: false
+
+      - name: Configure & Build
+        run: |
+          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/macos" -type d | head -1)
+
+          cmake -B build -G Xcode \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0 \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} \
+            -DQT_HOST_PATH=$QT_HOST_PATH \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+          cmake --build build --config ${{ env.BUILD_TYPE }} -- \
+            -allowProvisioningUpdates \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package (.ipa)
+        run: |
+          mkdir -p artifact
+          # Export unsigned .app bundle for CI (signing requires Apple Developer cert)
+          cp -r build/${{ env.BUILD_TYPE }}-iphoneos/NearLink_Mesh.app artifact/ 2>/dev/null || \
+          cp -r build/Release-iphoneos/NearLink_Mesh.app artifact/ 2>/dev/null || true
+
+          # Create unsigned .ipa
+          if [ -d "artifact/NearLink_Mesh.app" ]; then
+            mkdir -p Payload
+            cp -r artifact/NearLink_Mesh.app Payload/
+            cd Payload && zip -r ../artifact/NearLink_Mesh-unsigned.ipa . && cd ..
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-ios-arm64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  Android — arm64-v8a
+  # ═══════════════════════════════════════════════════════════
+  android-arm64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Qt (Android arm64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: android
+          arch: android_arm64_v8a
+          modules: qtconnectivity
+
+      - name: Install Qt (Host tools)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          set-env: false
+
+      - name: Configure & Build
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_ROOT }}
+        run: |
+          # Find Qt host path for cross-compilation tools
+          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/gcc_64" -type d | head -1)
+
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} \
+            -DQT_HOST_PATH=$QT_HOST_PATH \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-28 \
+            -DANDROID_STL=c++_shared
+
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Build APK
+        run: |
+          ${{ env.Qt6_DIR }}/../gcc_64/bin/androiddeployqt \
+            --input build/android-NearLink_Mesh-deployment-settings.json \
+            --output build/android-build-NearLink_Mesh \
+            --android-platform android-34 \
+            --jdk $JAVA_HOME \
+            --gradle \
+            --release
+
+          mkdir -p artifact
+          cp build/android-build-NearLink_Mesh/build/outputs/apk/release/*.apk artifact/NearLink_Mesh-arm64-v8a-release.apk 2>/dev/null || \
+          cp build/android-build-NearLink_Mesh/build/outputs/apk/debug/*.apk artifact/NearLink_Mesh-arm64-v8a.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-android-arm64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  Android — x86_64 (模拟器)
+  # ═══════════════════════════════════════════════════════════
+  android-x86_64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Qt (Android x86_64)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: android
+          arch: android_x86_64
+          modules: qtconnectivity
+
+      - name: Install Qt (Host tools)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          set-env: false
+
+      - name: Configure & Build
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_ROOT }}
+        run: |
+          QT_HOST_PATH=$(find $RUNNER_TOOL_CACHE/Qt -path "*/gcc_64" -type d | head -1)
+
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake \
+            -DCMAKE_PREFIX_PATH=${{ env.Qt6_DIR }} \
+            -DQT_HOST_PATH=$QT_HOST_PATH \
+            -DANDROID_ABI=x86_64 \
+            -DANDROID_PLATFORM=android-28 \
+            -DANDROID_STL=c++_shared
+
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Build APK
+        run: |
+          ${{ env.Qt6_DIR }}/../gcc_64/bin/androiddeployqt \
+            --input build/android-NearLink_Mesh-deployment-settings.json \
+            --output build/android-build-NearLink_Mesh \
+            --android-platform android-34 \
+            --jdk $JAVA_HOME \
+            --gradle \
+            --release
+
+          mkdir -p artifact
+          cp build/android-build-NearLink_Mesh/build/outputs/apk/release/*.apk artifact/NearLink_Mesh-x86_64-release.apk 2>/dev/null || \
+          cp build/android-build-NearLink_Mesh/build/outputs/apk/debug/*.apk artifact/NearLink_Mesh-x86_64.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NearLink_Mesh-android-x86_64
+          path: artifact/
+
+  # ═══════════════════════════════════════════════════════════
+  #  Release — 自动发布 (仅 tag 触发)
+  # ═══════════════════════════════════════════════════════════
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ windows, linux, macos, ios, android-arm64, android-x86_64 ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Package artifacts
+        run: |
+          cd dist
+          for dir in */; do
+            name="${dir%/}"
+            (cd "$dir" && zip -r "../${name}.zip" .)
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'rc') }}

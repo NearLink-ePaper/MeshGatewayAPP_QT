@@ -1,0 +1,82 @@
+#ifndef CONNECTEDPAGE_H
+#define CONNECTEDPAGE_H
+
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QGridLayout>
+#include <QScrollArea>
+
+#include "blemanager.h"
+#include "meshprotocol.h"
+
+class QMouseEvent;
+
+/**
+ * 可点击的节点卡片 — 封装 MeshNode 并发出 clicked 信号
+ */
+class NodeCardWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit NodeCardWidget(const MeshNode &node, QWidget *parent = nullptr);
+    MeshNode node() const { return m_node; }
+signals:
+    void clicked(const MeshNode &node);
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+private:
+    MeshNode m_node;
+};
+
+/**
+ * 连接页面 — 设备信息 + 节点网格 + 广播输入 + 通信日志
+ */
+class ConnectedPage : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ConnectedPage(BleManager *ble, QWidget *parent = nullptr);
+
+    void addLog(const QString &text);
+
+signals:
+    void nodeClicked(const MeshNode &node);
+
+public slots:
+    void onMessageReceived(const UpstreamMessage &msg);
+
+private slots:
+    void onQueryTopoClicked();
+    void onDisconnectClicked();
+    void onBroadcastClicked();
+    void onDebugInfoChanged(const QString &info);
+    void onDeviceNameChanged(const QString &name);
+    void onClearLogClicked();
+
+private:
+    void rebuildNodeGrid();
+
+    BleManager        *m_ble;
+
+    QLabel            *m_debugLabel;
+    QLabel            *m_deviceNameLabel;
+    QLabel            *m_gwAddrLabel;
+    QPushButton       *m_disconnectBtn;
+    QPushButton       *m_queryTopoBtn;
+    QWidget           *m_nodeGridContainer;
+    QGridLayout       *m_nodeGrid;
+    QLineEdit         *m_broadcastInput;
+    QPushButton       *m_broadcastBtn;
+    QListWidget       *m_logList;
+
+    quint16            m_gwAddr = 0;
+    QList<MeshNode>    m_nodes;
+};
+
+#endif // CONNECTEDPAGE_H

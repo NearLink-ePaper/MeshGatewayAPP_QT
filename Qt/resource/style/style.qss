@@ -1,0 +1,414 @@
+/* ═══════════════════════════════════════════════════════
+   NearLink Mesh — Modern Dark Theme v2
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Color Palette ───────────────────────────────────
+   bg-base:    #0D1117        bg-surface:  #161B22
+   bg-card:    #1C2128        bg-elevated: #21262D
+   border:     rgba(240,246,252,0.06)
+   accent:     #58A6FF        accent-hover: #79C0FF
+   green:      #3FB950        yellow: #D29922
+   red:        #F85149        muted: #8B949E
+   ─────────────────────────────────────────────────── */
+
+/* ─── Global ───────────────────────────────────────── */
+QWidget {
+    background-color: #0D1117;
+    color: #E6EDF3;
+    font-family: "Segoe UI", "SF Pro Display", "PingFang SC", "Helvetica Neue", sans-serif;
+    font-size: 13px;
+}
+
+QMainWindow {
+    background-color: #0D1117;
+}
+
+QLabel {
+    background-color: transparent;
+}
+
+/* ─── Top Bar ──────────────────────────────────────── */
+QWidget#topBar {
+    background-color: #161B22;
+    border-bottom: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+QLabel#appTitle {
+    color: #FFFFFF;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+QLabel#statusDot {
+    min-width: 10px;
+    max-width: 10px;
+    min-height: 10px;
+    max-height: 10px;
+    border-radius: 5px;
+}
+
+/* ─── Debug Label ──────────────────────────────────── */
+QLabel#debugLabel {
+    background-color: #161B22;
+    color: #D29922;
+    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-size: 11px;
+    padding: 10px 12px;
+    border: 1px solid rgba(210, 153, 34, 0.15);
+    border-radius: 10px;
+}
+
+/* ─── Scan Button ──────────────────────────────────── */
+QPushButton#scanButton {
+    background-color: #238636;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid rgba(63, 185, 80, 0.4);
+    border-radius: 10px;
+    padding: 12px 24px;
+}
+QPushButton#scanButton:hover {
+    background-color: #2EA043;
+    border-color: rgba(63, 185, 80, 0.6);
+}
+QPushButton#scanButton:pressed {
+    background-color: #196C2E;
+}
+QPushButton#scanButton:disabled {
+    background-color: #21262D;
+    color: #484F58;
+    border-color: rgba(240, 246, 252, 0.06);
+}
+
+/* ─── Hint Label ───────────────────────────────────── */
+QLabel#hintLabel {
+    color: #484F58;
+    font-size: 13px;
+    padding: 48px 24px;
+}
+
+/* ─── Device List ──────────────────────────────────── */
+QListWidget#deviceList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+QListWidget#deviceList::item {
+    background-color: #161B22;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 12px;
+    margin: 3px 0px;
+    padding: 0px;
+}
+QListWidget#deviceList::item:hover {
+    background-color: #1C2128;
+    border-color: rgba(240, 246, 252, 0.12);
+}
+
+/* ─── Device Card ──────────────────────────────────── */
+QWidget#deviceCard {
+    background-color: transparent;
+}
+QLabel#deviceIcon {
+    background-color: rgba(88, 166, 255, 0.12);
+    border-radius: 8px;
+}
+QLabel#deviceName {
+    color: #E6EDF3;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0px 0px 4px 0px;
+    min-height: 20px;
+}
+QLabel#deviceAddr {
+    color: #8B949E;
+    font-size: 11px;
+    font-family: "Cascadia Code", "Consolas", monospace;
+}
+QLabel#rssiGood {
+    color: #3FB950;
+    font-size: 12px;
+    font-weight: 600;
+}
+QLabel#rssiWeak {
+    color: #D29922;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ─── Device Info Card ─────────────────────────────── */
+QWidget#deviceInfoCard {
+    background-color: #161B22;
+    border: 1px solid rgba(63, 185, 80, 0.2);
+    border-radius: 12px;
+}
+QLabel#connDeviceName {
+    color: #E6EDF3;
+    font-weight: 700;
+    font-size: 15px;
+}
+QLabel#connGwAddr {
+    color: #3FB950;
+    font-size: 12px;
+    font-family: "Cascadia Code", "Consolas", monospace;
+}
+
+/* ─── Disconnect Button ────────────────────────────── */
+QPushButton#disconnectBtn {
+    background-color: rgba(248, 81, 73, 0.1);
+    color: #F85149;
+    border: 1px solid rgba(248, 81, 73, 0.25);
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QPushButton#disconnectBtn:hover {
+    background-color: rgba(248, 81, 73, 0.2);
+    border-color: rgba(248, 81, 73, 0.4);
+}
+QPushButton#disconnectBtn:pressed {
+    background-color: rgba(248, 81, 73, 0.3);
+}
+
+/* ─── Query Topology Button ────────────────────────── */
+QPushButton#queryTopoBtn {
+    background-color: #21262D;
+    color: #58A6FF;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    border-radius: 10px;
+    padding: 10px;
+}
+QPushButton#queryTopoBtn:hover {
+    background-color: #292E36;
+    border-color: rgba(88, 166, 255, 0.45);
+    color: #79C0FF;
+}
+QPushButton#queryTopoBtn:pressed {
+    background-color: #1C2128;
+}
+
+/* ─── Node Card ────────────────────────────────────── */
+QWidget#nodeCard {
+    background-color: #161B22;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 10px;
+}
+QWidget#nodeCard:hover {
+    background-color: #1C2128;
+    border-color: rgba(240, 246, 252, 0.12);
+}
+
+QWidget#nodeIconGateway {
+    background-color: rgba(63, 185, 80, 0.12);
+    border-radius: 8px;
+}
+QLabel#nodeIconLabelGateway {
+    color: #3FB950;
+    font-weight: 700;
+    font-size: 11px;
+}
+QWidget#nodeIconNormal {
+    background-color: rgba(88, 166, 255, 0.12);
+    border-radius: 8px;
+}
+QLabel#nodeIconLabelNormal {
+    color: #58A6FF;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+QLabel#nodeAddr {
+    color: #E6EDF3;
+    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-size: 13px;
+    font-weight: 600;
+}
+QLabel#hopGateway { color: #3FB950; font-size: 11px; }
+QLabel#hopDirect  { color: #3FB950; font-size: 11px; }
+QLabel#hopMulti   { color: #D29922; font-size: 11px; }
+QLabel#sendIcon   { color: #484F58; font-size: 14px; }
+
+/* ─── Broadcast Card ───────────────────────────────── */
+QWidget#broadcastCard {
+    background-color: #161B22;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 10px;
+}
+
+QLineEdit#broadcastInput, QLineEdit#sendDialogInput {
+    background-color: #0D1117;
+    color: #E6EDF3;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    selection-background-color: rgba(88, 166, 255, 0.3);
+    selection-color: #FFFFFF;
+}
+QLineEdit#broadcastInput:focus, QLineEdit#sendDialogInput:focus {
+    border: 1px solid rgba(88, 166, 255, 0.5);
+}
+QLineEdit#broadcastInput::placeholder, QLineEdit#sendDialogInput::placeholder {
+    color: #484F58;
+}
+
+QPushButton#broadcastBtn, QPushButton#sendDialogSend {
+    background-color: #238636;
+    color: #FFFFFF;
+    border: 1px solid rgba(63, 185, 80, 0.4);
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-weight: 600;
+    font-size: 13px;
+}
+QPushButton#broadcastBtn:hover, QPushButton#sendDialogSend:hover {
+    background-color: #2EA043;
+    border-color: rgba(63, 185, 80, 0.6);
+}
+QPushButton#broadcastBtn:pressed, QPushButton#sendDialogSend:pressed {
+    background-color: #196C2E;
+}
+
+/* ─── Log Area ─────────────────────────────────────── */
+QLabel#logTitle {
+    color: #8B949E;
+    font-size: 12px;
+    font-weight: 600;
+    padding-left: 4px;
+    text-transform: uppercase;
+}
+
+QPushButton#clearLogBtn {
+    background-color: transparent;
+    color: #484F58;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 11px;
+}
+QPushButton#clearLogBtn:hover {
+    color: #8B949E;
+    border-color: rgba(240, 246, 252, 0.15);
+}
+QPushButton#clearLogBtn:pressed {
+    background-color: rgba(240, 246, 252, 0.04);
+}
+
+QWidget#logContainer {
+    background-color: #0D1117;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 10px;
+}
+
+QListWidget#logList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    font-family: "Cascadia Code", "Consolas", "SF Mono", monospace;
+    font-size: 11px;
+}
+QListWidget#logList::item {
+    padding: 3px 8px;
+    border: none;
+    border-bottom: 1px solid rgba(240, 246, 252, 0.03);
+}
+
+/* ─── Send Dialog ──────────────────────────────────── */
+QDialog#sendDialog {
+    background-color: #161B22;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 14px;
+}
+QLabel#sendDialogTitle {
+    color: #E6EDF3;
+    font-size: 16px;
+    font-weight: 700;
+}
+QLabel#sendDialogDesc {
+    color: #8B949E;
+    font-size: 12px;
+}
+QPushButton#sendDialogCancel {
+    background-color: #21262D;
+    color: #8B949E;
+    border: 1px solid rgba(240, 246, 252, 0.06);
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+QPushButton#sendDialogCancel:hover {
+    color: #E6EDF3;
+    border-color: rgba(240, 246, 252, 0.15);
+}
+
+/* ─── Connecting Page ──────────────────────────────── */
+QLabel#connectingLabel {
+    color: #E6EDF3;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* ─── Section Separator ───────────────────────────── */
+QFrame#sectionSeparator {
+    background-color: rgba(240, 246, 252, 0.06);
+    border: none;
+    max-height: 1px;
+}
+
+/* ─── Scroll Area ──────────────────────────────────── */
+QScrollArea#nodeScrollArea {
+    background-color: transparent;
+    border: none;
+}
+QWidget#nodeGridContainer {
+    background-color: transparent;
+}
+
+/* ─── Scrollbar (thin style) ──────────────────────── */
+QScrollBar:vertical {
+    background: transparent;
+    width: 6px;
+    margin: 4px 0;
+}
+QScrollBar::handle:vertical {
+    background: rgba(139, 148, 158, 0.25);
+    border-radius: 3px;
+    min-height: 40px;
+}
+QScrollBar::handle:vertical:hover {
+    background: rgba(139, 148, 158, 0.4);
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar:horizontal {
+    height: 0;
+}
+
+/* ─── Progress Bar (connecting) ───────────────────── */
+QProgressBar {
+    background-color: #21262D;
+    border: none;
+    border-radius: 4px;
+    height: 6px;
+}
+QProgressBar::chunk {
+    background-color: #58A6FF;
+    border-radius: 3px;
+}
+
+/* ─── Tooltip ─────────────────────────────────────── */
+QToolTip {
+    background-color: #1C2128;
+    color: #E6EDF3;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
