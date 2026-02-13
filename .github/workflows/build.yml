@@ -470,7 +470,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/qt-ohos
-          key: qt-ohos-${{ env.OHOS_ARCH }}-5.15.17-buildqt-v1
+          key: qt-ohos-${{ env.OHOS_ARCH }}-5.15.12-buildqt-v1
 
       - name: Build Qt for OHOS (via build-qt)
         if: steps.qt-cache.outputs.cache-hit != 'true'
@@ -493,7 +493,7 @@ jobs:
               "ohos_version": 15,
               "build_type": "release",
               "build_ohos_abi": "arm64-v8a",
-              "build_qt_tag": "v5.15.17-lts-lgpl",
+              "build_qt_tag": "v5.15.12-lts-lgpl",
               "build_ohqt_tag": "master",
               "clone_depth": 1,
               "jobs": $JOBS,
