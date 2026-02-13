@@ -36,6 +36,7 @@ BleManager::BleManager(QObject *parent)
         for (int i = 0; i < m_scannedDevices.size(); ++i) {
             if (m_scannedDevices[i].name == info.name()) {
                 m_scannedDevices[i].rssi = info.rssi();
+                emit scannedDevicesChanged();
                 break;
             }
         }

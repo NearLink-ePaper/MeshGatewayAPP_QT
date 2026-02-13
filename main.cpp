@@ -11,7 +11,11 @@
 
 int main(int argc, char *argv[])
 {
-    // 高分屏抗锯齿：移动端使用精确缩放因子，桌面端保持默认取整策略
+    // 高分屏支持
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
 #if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
     QApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
