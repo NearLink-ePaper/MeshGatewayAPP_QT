@@ -530,41 +530,46 @@ jobs:
             fi
           done
 
-          # 3) qtohextras — 可能包含 mkspec 和额外模块
+          # 3) qtohextras — 额外模块，含 mkspec 和 OHOS 插件
           if [ -d /tmp/qt-patches/patch/qtohextras ]; then
-            echo "=== qtohextras contents ==="
-            find /tmp/qt-patches/patch/qtohextras -type f | head -40
+            echo "=== qtohextras tree ==="
+            find /tmp/qt-patches/patch/qtohextras -maxdepth 3 | head -60
 
-            # 若含 mkspecs，复制到 qtbase
-            if [ -d /tmp/qt-patches/patch/qtohextras/mkspecs ]; then
-              echo "Copying qtohextras/mkspecs -> qtbase/mkspecs"
-              cp -rv /tmp/qt-patches/patch/qtohextras/mkspecs/. /tmp/qt-src/qtbase/mkspecs/ 2>&1 | tail -20
-            fi
-            # 若含其他源码目录，复制到 qt-src 根
-            for d in /tmp/qt-patches/patch/qtohextras/*/; do
-              dname=$(basename "$d")
-              if [ "$dname" != "mkspecs" ]; then
-                echo "Copying qtohextras/$dname -> qt-src/$dname"
-                mkdir -p /tmp/qt-src/$dname
-                cp -r "$d"/. /tmp/qt-src/$dname/
-              fi
-            done
+            echo "=== qmake.conf files in qtohextras ==="
+            find /tmp/qt-patches/patch/qtohextras -name "qmake.conf" | head -10
+
+            # 复制整个 qtohextras 模块到 Qt 源码树
+            cp -r /tmp/qt-patches/patch/qtohextras /tmp/qt-src/qtohextras
+            echo "Copied qtohextras -> /tmp/qt-src/qtohextras"
           fi
 
-          # 4) 验证
-          echo "=== Verification ==="
-          echo "mkspecs containing 'ohos':"
-          find /tmp/qt-src/qtbase/mkspecs -maxdepth 1 -iname "*ohos*" -o -iname "*harmony*" | head -10 || echo "none"
-          echo "configure --help | grep ohos:"
-          /tmp/qt-src/configure --help 2>/dev/null | grep -i ohos | head -10 || echo "none"
+          # 4) 在整个源码树中搜索 ohos mkspec 并安装到 qtbase/mkspecs
+          echo "=== Searching for ohos mkspec in entire source tree ==="
+          OHOS_MKSPEC=$(find /tmp/qt-src -path "*/mkspecs/ohos-clang/qmake.conf" | head -1)
+          if [ -n "$OHOS_MKSPEC" ]; then
+            MKSPEC_DIR=$(dirname "$OHOS_MKSPEC")
+            echo "Found ohos-clang mkspec at: $MKSPEC_DIR"
+            if [ "$MKSPEC_DIR" != "/tmp/qt-src/qtbase/mkspecs/ohos-clang" ]; then
+              cp -rv "$MKSPEC_DIR" /tmp/qt-src/qtbase/mkspecs/ohos-clang
+              echo "Installed to qtbase/mkspecs/ohos-clang"
+            fi
+          else
+            echo "::warning::ohos-clang qmake.conf not found anywhere"
+            echo "All qmake.conf paths:"
+            find /tmp/qt-src -name "qmake.conf" -path "*/ohos*" | head -10 || echo "none"
+            find /tmp/qt-src -name "qmake.conf" -path "*/oh*" | head -10 || echo "none"
+          fi
 
+          # 5) 最终验证
+          echo "=== Final Verification ==="
           if [ -d /tmp/qt-src/qtbase/mkspecs/ohos-clang ]; then
-            echo "OK: ohos-clang mkspec found"
+            echo "OK: ohos-clang mkspec installed"
             ls /tmp/qt-src/qtbase/mkspecs/ohos-clang/
           else
-            echo "::warning::ohos-clang mkspec not in qtbase/mkspecs"
-            echo "All mkspecs (filtered):"
-            ls /tmp/qt-src/qtbase/mkspecs/ | grep -iE "ohos|harm|oh" || echo "none matching"
+            echo "::error::ohos-clang mkspec STILL not found"
+            echo "All mkspecs:"
+            ls /tmp/qt-src/qtbase/mkspecs/ | head -40
+            exit 1
           fi
 
           rm -rf /tmp/qt-patches
