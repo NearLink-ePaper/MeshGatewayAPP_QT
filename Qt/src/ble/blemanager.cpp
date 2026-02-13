@@ -32,13 +32,11 @@ BleManager::BleManager(QObject *parent)
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceUpdated,
-            this, [this](const QBluetoothDeviceInfo &info, QBluetoothDeviceDiscoveryAgent::UpdatedFields fields) {
-        if (fields.testFlag(QBluetoothDeviceDiscoveryAgent::RssiField)) {
-            for (int i = 0; i < m_scannedDevices.size(); ++i) {
-                if (m_scannedDevices[i].name == info.name()) {
-                    m_scannedDevices[i].rssi = info.rssi();
-                    break;
-                }
+            this, [this](const QBluetoothDeviceInfo &info, auto /*fields*/) {
+        for (int i = 0; i < m_scannedDevices.size(); ++i) {
+            if (m_scannedDevices[i].name == info.name()) {
+                m_scannedDevices[i].rssi = info.rssi();
+                break;
             }
         }
     });
