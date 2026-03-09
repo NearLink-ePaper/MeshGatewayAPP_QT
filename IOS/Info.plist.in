@@ -31,9 +31,14 @@
         <string>bluetooth-central</string>
     </array>
 
-    <!-- ── 灵动岛 / 全面屏适配 ──────────────────────────── -->
-    <key>UILaunchStoryboardName</key>
-    <string>LaunchScreen</string>
+    <!-- ── 启动画面（纯色，与 App 背景同色，视觉无闪烁）────── -->
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>LaunchBackgroundColor</string>
+        <key>UIImageRespectsSafeAreaInsets</key>
+        <true/>
+    </dict>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
     <key>UIStatusBarStyle</key>

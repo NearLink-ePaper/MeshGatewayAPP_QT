@@ -11,8 +11,7 @@ configure_file(
 # 保存路径，在 target 创建后由根 CMakeLists.txt 应用
 set(IOS_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/IOS/Info.plist")
 
-# ── LaunchScreen（灵动岛 / 全面屏适配必需）────────────────
-set(IOS_LAUNCH_STORYBOARD "${CMAKE_CURRENT_SOURCE_DIR}/IOS/LaunchScreen.storyboard")
+# LaunchScreen storyboard 已替换为 Info.plist UILaunchScreen 纯色方案，无需 storyboard
 
 # ── AppIcon（Asset Catalog）──────────────────────────────
 set(IOS_ASSET_CATALOG "${CMAKE_CURRENT_SOURCE_DIR}/IOS/Assets.xcassets")
