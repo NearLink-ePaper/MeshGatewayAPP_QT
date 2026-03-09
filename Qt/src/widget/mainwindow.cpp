@@ -13,8 +13,13 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(qApp->applicationName());
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    // 移动端全屏显示
+    showMaximized();
+#else
     resize(420, 700);
     setMinimumSize(360, 560);
+#endif
 
     // 创建 BLE 管理器
     m_ble = new BleManager(this);

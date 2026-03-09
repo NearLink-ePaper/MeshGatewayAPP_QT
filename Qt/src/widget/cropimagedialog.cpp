@@ -2,11 +2,13 @@
 #include "stylemanager.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QGuiApplication>
 #include <QPainter>
 #include <QMouseEvent>
 #include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QScreen>
 #include <QTransform>
 #include <QtMath>
 
@@ -271,7 +273,14 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     else
         title = tr("Crop Image → 0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper();
     setWindowTitle(title);
-    setMinimumSize(dp(350), dp(400));
+    // 移动端自适应尺寸
+    int scrW = 420, scrH = 700;
+    if (auto *screen = QGuiApplication::primaryScreen()) {
+        QRect avail = screen->availableGeometry();
+        scrW = avail.width();
+        scrH = avail.height();
+    }
+    setMinimumSize(qMin(dp(350), scrW - 40), qMin(dp(400), scrH - 80));
 
     auto *layout = new QVBoxLayout(this);
     layout->setSpacing(dp(8));

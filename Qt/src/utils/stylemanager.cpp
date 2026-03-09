@@ -29,8 +29,10 @@ QPixmap StyleManager::loadSvgIcon(const QString &path, int logicalSize)
 
 int StyleManager::dp(int logicalPx)
 {
-    qreal dpr = qApp ? qApp->devicePixelRatio() : 1.0;
-    return qCeil(logicalPx * dpr);
+    // Qt stylesheet / layout 值本身就是逻辑像素（DPI 无关），
+    // 框架在渲染时自动乘以 devicePixelRatio。
+    // 此处不再乘以 DPR，避免在移动端 / HiDPI 桌面上双重缩放。
+    return logicalPx;
 }
 
 // ─── AAWidget ────────────────────────────────────────────

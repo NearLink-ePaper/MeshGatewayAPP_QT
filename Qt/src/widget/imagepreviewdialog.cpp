@@ -4,8 +4,10 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QComboBox>
+#include <QGuiApplication>
 #include <QPushButton>
 #include <QPixmap>
+#include <QScreen>
 
 ImagePreviewDialog::ImagePreviewDialog(const QImage &croppedBitmap,
                                         const ImageResolution &resolution,
@@ -30,7 +32,11 @@ void ImagePreviewDialog::buildUI()
     else
         title = tr("Image Preview → 0x%1").arg(m_node.addr, 4, 16, QChar('0')).toUpper();
     setWindowTitle(title);
-    setMinimumWidth(dp(400));
+    // 移动端自适应宽度
+    int screenW = 420;
+    if (auto *screen = QGuiApplication::primaryScreen())
+        screenW = screen->availableGeometry().width();
+    setMinimumWidth(qMin(dp(400), screenW - 40));
 
     auto *layout = new QVBoxLayout(this);
     layout->setSpacing(dp(10));
@@ -53,8 +59,10 @@ void ImagePreviewDialog::buildUI()
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(dp(8));
 
-    int maxPrevW = dp(180);
-    int maxPrevH = dp(260);
+    // 预览图尺寸按可用宽度自适应（两张并排 + 间距 + 边距）
+    int availW = qMin(dp(400), screenW - 40) - dp(40);
+    int maxPrevW = qMax(80, availW / 2 - dp(20));
+    int maxPrevH = maxPrevW * 14 / 10;
 
     // 原图
     auto *origFrame = new QWidget;
