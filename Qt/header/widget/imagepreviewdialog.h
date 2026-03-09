@@ -39,6 +39,7 @@ signals:
 
 private:
     void buildUI();
+    void rebuildForQuality(int quality);
 
     MeshNode         m_node;
     QList<quint16>   m_multicastTargets;
@@ -47,6 +48,8 @@ private:
     ProcessedImage   m_processed;
     TransportMode    m_transport = BleTransport;
     QComboBox       *m_modeCombo = nullptr;
+    int              m_jpegQuality = 50;
+    QVBoxLayout     *m_rootLayout = nullptr;
 };
 
 #endif // IMAGEPREVIEWDIALOG_H

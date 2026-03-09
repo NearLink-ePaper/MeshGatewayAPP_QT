@@ -24,9 +24,10 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
 
     // ── 节点信息卡片 ──────────────────────────────────
     auto *infoCard = new AAWidget(this);
-    infoCard->setObjectName("debugCard");  // 用 debugCard 而非 nodeCard，避免高度被样式拉伸
+    infoCard->setObjectName("debugCard");
+    infoCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto *infoLayout = new QHBoxLayout(infoCard);
-    infoLayout->setContentsMargins(dp(14), dp(10), dp(14), dp(10));
+    infoLayout->setContentsMargins(dp(12), dp(8), dp(12), dp(8));
     infoLayout->setSpacing(dp(10));
     infoLayout->setAlignment(Qt::AlignVCenter);
 

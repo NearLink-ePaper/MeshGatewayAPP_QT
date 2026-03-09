@@ -9,8 +9,8 @@
 #include "meshprotocol.h"
 
 class QLabel;
-class QComboBox;
 class QPushButton;
+class AAButton;
 
 /**
  * 裁剪区域绘制控件
@@ -63,7 +63,7 @@ signals:
     void cropConfirmed(const QImage &croppedBitmap, const ImageResolution &resolution);
 
 private slots:
-    void onResolutionChanged(int index);
+    void onCycleResolution();
     void onRotate();
     void onConfirm();
 
@@ -71,7 +71,8 @@ private:
     MeshNode    m_node;
     QImage      m_rotatedBitmap;
     CropWidget *m_cropWidget;
-    QComboBox  *m_resCombo;
+    AAButton   *m_resBtn = nullptr;
+    int         m_resIndex = 0;
     QList<ImageResolution> m_resolutions;
 };
 

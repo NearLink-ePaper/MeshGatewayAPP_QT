@@ -5,7 +5,6 @@
 #include <QGuiApplication>
 #include <QPainter>
 #include <QMouseEvent>
-#include <QComboBox>
 #include <QPushButton>
 #include <QLabel>
 #include <QScreen>
@@ -296,13 +295,15 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     resLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(12)));
     resRow->addWidget(resLabel);
 
-    m_resCombo = new QComboBox;
-    for (const auto &r : m_resolutions)
-        m_resCombo->addItem(r.label);
-    m_resCombo->setCurrentIndex(0);
-    connect(m_resCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &CropImageDialog::onResolutionChanged);
-    resRow->addWidget(m_resCombo);
+    m_resBtn = new AAButton(m_resolutions[0].label);
+    m_resBtn->setMinimumHeight(dp(34));
+    m_resBtn->setStyleSheet(QStringLiteral(
+        "AAButton { background: rgba(79,195,247,0.15); color: #4FC3F7; "
+        "font-weight: 600; border-radius: %1px; padding: 0 %2px; font-size: %3px; }"
+        "AAButton:hover { background: rgba(79,195,247,0.30); }")
+        .arg(dp(6)).arg(dp(12)).arg(dp(12)));
+    connect(m_resBtn, &QPushButton::clicked, this, &CropImageDialog::onCycleResolution);
+    resRow->addWidget(m_resBtn);
     resRow->addStretch();
 
     // 旋转按钮
@@ -339,9 +340,11 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     layout->addLayout(btnRow);
 }
 
-void CropImageDialog::onResolutionChanged(int index)
+void CropImageDialog::onCycleResolution()
 {
-    if (index < 0 || index >= m_resolutions.size()) return;
+    m_resIndex = (m_resIndex + 1) % m_resolutions.size();
+    m_resBtn->setText(m_resolutions[m_resIndex].label);
+    int index = m_resIndex;
     float ar = (float)m_resolutions[index].width / m_resolutions[index].height;
     m_cropWidget->setAspectRatio(ar);
 }
@@ -366,7 +369,6 @@ void CropImageDialog::onConfirm()
     int ph = qMax(1, qMin((int)(cr.height() * imgH), imgH - py));
 
     QImage cropped = m_rotatedBitmap.copy(px, py, pw, ph);
-    int resIdx = m_resCombo->currentIndex();
-    emit cropConfirmed(cropped, m_resolutions[resIdx]);
+    emit cropConfirmed(cropped, m_resolutions[m_resIndex]);
     accept();
 }

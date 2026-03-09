@@ -22,12 +22,30 @@ ImagePreviewDialog::ImagePreviewDialog(const QImage &croppedBitmap,
     , m_resolution(resolution)
     , m_transport(transport)
 {
-    m_processed = ImageUtils::processFromCropped(croppedBitmap, resolution.width, resolution.height);
+    m_rootLayout = new QVBoxLayout(this);
+    m_rootLayout->setContentsMargins(dp(14), dp(14), dp(14), dp(14));
+    m_rootLayout->setSpacing(dp(10));
+    m_processed = ImageUtils::processFromCropped(croppedBitmap, resolution.width, resolution.height, m_jpegQuality);
+    buildUI();
+}
+
+void ImagePreviewDialog::rebuildForQuality(int quality)
+{
+    m_jpegQuality = quality;
+    m_modeCombo = nullptr;
+    while (QLayoutItem *item = m_rootLayout->takeAt(0)) {
+        if (item->widget()) item->widget()->deleteLater();
+        delete item;
+    }
+    m_processed = ImageUtils::processFromCropped(
+        m_croppedBitmap, m_resolution.width, m_resolution.height, m_jpegQuality);
     buildUI();
 }
 
 void ImagePreviewDialog::buildUI()
 {
+    auto *layout = m_rootLayout;
+
     // ── 标题 ──────────────────────────────────────────────
     QString title;
     if (!m_multicastTargets.isEmpty())
@@ -41,10 +59,6 @@ void ImagePreviewDialog::buildUI()
         screenW = screen->availableGeometry().width();
     int dlgW = qMin(dp(400), screenW - 32);
     setMinimumWidth(dlgW);
-
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(dp(14), dp(14), dp(14), dp(14));
-    layout->setSpacing(dp(10));
 
     // ── 信息条 ────────────────────────────────────────────
     QString sizeLabel;
@@ -129,6 +143,43 @@ void ImagePreviewDialog::buildUI()
     previewRow->addLayout(epdCol, 1);
 
     layout->addWidget(previewCard);
+
+    // ── 画质选择（高/标准/低）────────────────────────────────
+    {
+        auto *qualCard = new AAWidget(this);
+        qualCard->setObjectName("debugCard");
+        qualCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        auto *qualLayout = new QHBoxLayout(qualCard);
+        qualLayout->setContentsMargins(dp(12), dp(6), dp(12), dp(6));
+        qualLayout->setSpacing(dp(6));
+
+        auto *qualLabel = new QLabel(tr("画质"), qualCard);
+        qualLabel->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(12)));
+        qualLayout->addWidget(qualLabel);
+        qualLayout->addStretch();
+
+        static const struct { const char *name; int q; } kQ[] = {
+            {"高", 70}, {"标准", 50}, {"低", 30}
+        };
+        for (auto &kq : kQ) {
+            int q = kq.q;
+            bool active = (q == m_jpegQuality);
+            auto *btn = new AAButton(tr(kq.name), qualCard);
+            btn->setMinimumHeight(dp(30));
+            QString activeStyle = QStringLiteral(
+                "AAButton { background: rgba(79,195,247,0.28); color: #4FC3F7; "
+                "font-weight: 700; border-radius: %1px; padding: 0 %2px; font-size: %3px; }")
+                .arg(dp(5)).arg(dp(10)).arg(dp(12));
+            QString inactiveStyle = QStringLiteral(
+                "AAButton { background: rgba(79,195,247,0.07); color: #666; "
+                "border-radius: %1px; padding: 0 %2px; font-size: %3px; }")
+                .arg(dp(5)).arg(dp(10)).arg(dp(12));
+            btn->setStyleSheet(active ? activeStyle : inactiveStyle);
+            connect(btn, &QPushButton::clicked, this, [this, q]() { rebuildForQuality(q); });
+            qualLayout->addWidget(btn);
+        }
+        layout->addWidget(qualCard);
+    }
 
     // ── 传输模式 (单播时显示) ─────────────────────────────
     if (m_multicastTargets.isEmpty()) {
