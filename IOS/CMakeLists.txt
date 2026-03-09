@@ -20,8 +20,14 @@ set(IOS_ASSET_CATALOG "${CMAKE_CURRENT_SOURCE_DIR}/IOS/Assets.xcassets")
 set(IOS_LPROJ_EN "${CMAKE_CURRENT_SOURCE_DIR}/IOS/en.lproj/InfoPlist.strings")
 set(IOS_LPROJ_ZH "${CMAKE_CURRENT_SOURCE_DIR}/IOS/zh-Hans.lproj/InfoPlist.strings")
 
-# 如需添加 iOS 专用代码（如 Objective-C 桥接），在此添加源文件：
-# list(APPEND PLATFORM_SOURCES
-#     IOS/src/iosble.mm
-# )
-# include_directories(${CMAKE_CURRENT_SOURCE_DIR}/IOS/header)
+# iOS 原生相册桥接（PHPickerViewController）
+list(APPEND PLATFORM_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/IOS/src/iosutil.mm
+)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/IOS/header)
+
+# PhotosUI.framework — PHPickerViewController 依赖
+list(APPEND IOS_FRAMEWORKS
+    "-framework PhotosUI"
+    "-framework Photos"
+)

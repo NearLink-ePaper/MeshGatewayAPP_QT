@@ -8,6 +8,9 @@
 #include <QProgressBar>
 #include <QFileDialog>
 #include <QImageReader>
+#if defined(Q_OS_IOS)
+#include "iosutil.h"
+#endif
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -234,10 +237,16 @@ void MainWindow::onMulticastImageRequested(const QList<quint16> &targets)
 
 void MainWindow::openImagePicker(const MeshNode &node, const QList<quint16> &multicastTargets)
 {
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    // 移动端：通过系统原生图库选取图片（触发相册，而非文件管理器）
+#if defined(Q_OS_IOS)
+    // iOS: PHPickerViewController 直接打开原生相册（ObjC++ 桥接）
+    iosOpenPhotoLibrary([this, node, multicastTargets](QImage img) {
+        if (img.isNull()) return;
+        openCropDialog(img, node, multicastTargets);
+    });
+#elif defined(Q_OS_ANDROID)
+    // Android: getOpenFileContent 触发 ACTION_GET_CONTENT image/*
     QFileDialog::getOpenFileContent(
-        tr("Images (*.jpg *.jpeg *.png *.bmp *.gif *.tif *.tiff *.webp)"),
+        QStringLiteral("Images (*.jpg *.jpeg *.png *.bmp *.gif *.webp)"),
         [this, node, multicastTargets](const QString &fileName, const QByteArray &fileContent) {
             if (fileName.isEmpty() || fileContent.isEmpty()) return;
             QImage img;

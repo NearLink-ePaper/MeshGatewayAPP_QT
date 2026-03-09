@@ -210,6 +210,15 @@ if(IOS AND DEFINED IOS_INFO_PLIST)
             MACOSX_PACKAGE_LOCATION "Resources/zh-Hans.lproj")
     endif()
 
+    # 原生相册桥接 (PHPickerViewController)
+    target_sources(NearLink_Mesh PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/IOS/src/iosutil.mm")
+    target_include_directories(NearLink_Mesh PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/IOS/header")
+    target_link_libraries(NearLink_Mesh PRIVATE
+        "-framework PhotosUI"
+        "-framework Photos")
+
     set_target_properties(NearLink_Mesh PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${IOS_INFO_PLIST}"
         XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "wellwhz"
