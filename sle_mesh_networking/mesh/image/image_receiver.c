@@ -563,8 +563,6 @@ static void handle_end(uint16_t src_addr, const uint8_t *data, uint16_t len)
             s_info.state = IMG_STATE_ERROR;
             return;
         }
-        /* 更新 total_bytes 为 4bpp 输出大小, 供上层刷屏使用 */
-        s_info.total_bytes = (uint16_t)out_4bpp_size;
         osal_printk("%s JPEG decoded: %dx%d → 4bpp %luB\r\n",
                     IMG_LOG, dec_w, dec_h, (unsigned long)out_4bpp_size);
     }
