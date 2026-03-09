@@ -81,26 +81,23 @@ void ImagePreviewDialog::buildUI()
     arrowLabel->setAlignment(Qt::AlignCenter);
     previewRow->addWidget(arrowLabel);
 
-    // JPEG 压缩后预览
-    auto *jpegFrame = new QWidget;
-    auto *jpegLayout = new QVBoxLayout(jpegFrame);
-    jpegLayout->setContentsMargins(0, 0, 0, 0);
-    jpegLayout->setSpacing(dp(4));
-    auto *jpegTitle = new QLabel(tr("JPEG"));
-    jpegTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
-    jpegTitle->setAlignment(Qt::AlignCenter);
-    jpegLayout->addWidget(jpegTitle);
-    auto *jpegImgLabel = new QLabel;
-    // 解码 JPEG 数据显示实际压缩效果
-    QImage jpegPreview;
-    jpegPreview.loadFromData(m_processed.imageData, "JPEG");
-    QPixmap jpegPix = QPixmap::fromImage(jpegPreview);
-    jpegPix = jpegPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    jpegImgLabel->setPixmap(jpegPix);
-    jpegImgLabel->setAlignment(Qt::AlignCenter);
-    jpegImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px;").arg(dp(4)));
-    jpegLayout->addWidget(jpegImgLabel);
-    previewRow->addWidget(jpegFrame);
+    // 墨水屏模拟预览 (6色抖动)
+    auto *epdFrame = new QWidget;
+    auto *epdLayout = new QVBoxLayout(epdFrame);
+    epdLayout->setContentsMargins(0, 0, 0, 0);
+    epdLayout->setSpacing(dp(4));
+    auto *epdTitle = new QLabel(tr("E-Paper Preview"));
+    epdTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
+    epdTitle->setAlignment(Qt::AlignCenter);
+    epdLayout->addWidget(epdTitle);
+    auto *epdImgLabel = new QLabel;
+    QPixmap epdPix = QPixmap::fromImage(m_processed.previewBitmap);
+    epdPix = epdPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    epdImgLabel->setPixmap(epdPix);
+    epdImgLabel->setAlignment(Qt::AlignCenter);
+    epdImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px;").arg(dp(4)));
+    epdLayout->addWidget(epdImgLabel);
+    previewRow->addWidget(epdFrame);
 
     layout->addLayout(previewRow);
 

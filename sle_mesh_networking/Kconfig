@@ -1,0 +1,107 @@
+#===============================================================================
+# @brief    Kconfig file.
+# Copyright (c) @CompanyNameMagicTag 2023-2023. All rights reserved.
+#===============================================================================
+
+config SLE_UART_BUS
+    int
+    prompt "Set the UART BUS of the currrent sample."
+    default 0
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    help
+        This option means the UART BUS of the currrent sample.
+
+config UART_TXD_PIN
+    int
+    prompt "Choose UART TXD pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    default 17
+
+config UART_RXD_PIN
+    int
+    prompt "Choose UART RXD pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    default 18
+
+choice
+    prompt "Select sle mesh node type"
+    default SAMPLE_SUPPORT_SLE_MESH
+    config SAMPLE_SUPPORT_SLE_MESH_SERVER
+        bool "Enable SLE Mesh Server-only sample."
+    config SAMPLE_SUPPORT_SLE_MESH_CLIENT
+        bool "Enable SLE Mesh Client-only sample."
+    config SAMPLE_SUPPORT_SLE_MESH
+        bool "Enable SLE Mesh networking (Server + Client + Mesh)."
+endchoice
+
+# 注: Mesh 节点地址在 mesh/mesh_config.h 中的 MESH_NODE_ADDR 宏定义
+# 每个节点编译前需修改该值为不同地址 (0x0001, 0x0002, ...)
+
+config SUPPORT_SLE_PERIPHERAL
+    bool
+    default y if (SAMPLE_SUPPORT_SLE_MESH_SERVER || SAMPLE_SUPPORT_SLE_MESH)
+
+config SUPPORT_SLE_CENTRAL
+    bool
+    default y if (SAMPLE_SUPPORT_SLE_MESH_CLIENT || SAMPLE_SUPPORT_SLE_MESH)
+
+# BLE 网关需要 BLE 协议栈支持
+config SUPPORT_BLE
+    bool
+    default y if SAMPLE_SUPPORT_SLE_MESH
+
+config EPD_MASTER_BUS_ID
+    int
+    prompt "Choose SPI master bus id."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 0
+
+config EPD_BUSY_PIN
+    int
+    prompt "Choose e-Paper BUSY pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 12
+
+config EPD_DIN_PIN
+    int
+    prompt "Choose e-Paper DIN pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 9
+
+config EPD_CLK_PIN
+    int
+    prompt "Choose e-Paper CLK pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 7
+
+config EPD_CS_PIN
+    int
+    prompt "Choose e-Paper CS pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 8
+
+config EPD_RST_PIN
+    int
+    prompt "Choose e-Paper RES pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 2
+
+config EPD_PWR_PIN
+    int
+    prompt "Choose e-Paper PWR pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 11
+
+config EPD_DC_PIN
+    int
+    prompt "Choose e-Paper DC pin."
+    depends on SAMPLE_SUPPORT_SLE_MESH_NETWORKING
+    depends on SAMPLE_SUPPORT_SLE_MESH
+    default 10

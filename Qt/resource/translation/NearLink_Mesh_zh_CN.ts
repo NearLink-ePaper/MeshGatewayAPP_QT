@@ -423,8 +423,8 @@ Auto-discover SLE_GW_XXXX devices</source>
         <translation>原图</translation>
     </message>
     <message>
-        <source>JPEG</source>
-        <translation>JPEG 压缩</translation>
+        <source>E-Paper Preview</source>
+        <translation>墨水屏预览</translation>
     </message>
     <message>
         <source>Mode</source>
