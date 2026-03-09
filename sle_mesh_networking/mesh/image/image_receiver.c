@@ -529,42 +529,9 @@ static void handle_end(uint16_t src_addr, const uint8_t *data, uint16_t len)
             return;
         }
     } else if (s_info.mode == IMG_MODE_JPEG) {
-        /* JPEG 解码 + Floyd-Steinberg 抖动 → 4bpp
-         * 输出直接覆盖 s_img_buf (需要足够空间放 4bpp 结果) */
-        uint16_t dec_w = 0, dec_h = 0;
-        uint16_t compressed_size = s_info.total_bytes;
-
-        /* 临时拷贝 JPEG 数据, 因为解码输出会覆盖 s_img_buf */
-        uint8_t *jpeg_tmp = (uint8_t *)osal_vmalloc(compressed_size);
-        if (!jpeg_tmp) {
-            osal_printk("%s END: JPEG tmp alloc failed (%d)\r\n", IMG_LOG, compressed_size);
-            s_info.state = IMG_STATE_ERROR;
-            return;
-        }
-        (void)memcpy_s(jpeg_tmp, compressed_size, s_img_buf, compressed_size);
-
-        /* 4bpp 输出大小: (width/2) * height */
-        uint32_t out_4bpp_size = (uint32_t)(s_info.width / 2) * s_info.height;
-        if (out_4bpp_size > IMG_RX_BUF_SIZE) {
-            osal_printk("%s END: 4bpp output %lu > buf %d\r\n",
-                        IMG_LOG, (unsigned long)out_4bpp_size, IMG_RX_BUF_SIZE);
-            osal_vfree(jpeg_tmp);
-            s_info.state = IMG_STATE_ERROR;
-            return;
-        }
-
-        bool ok = jpeg_decode_to_epd(jpeg_tmp, compressed_size,
-                                     s_img_buf, IMG_RX_BUF_SIZE,
-                                     &dec_w, &dec_h);
-        osal_vfree(jpeg_tmp);
-
-        if (!ok) {
-            osal_printk("%s END: JPEG decode+dither failed!\r\n", IMG_LOG);
-            s_info.state = IMG_STATE_ERROR;
-            return;
-        }
-        osal_printk("%s JPEG decoded: %dx%d → 4bpp %luB\r\n",
-                    IMG_LOG, dec_w, dec_h, (unsigned long)out_4bpp_size);
+        /* JPEG 数据留在 s_img_buf, ePaper 任务流式解码+显示 */
+        osal_printk("%s JPEG: %d bytes, defer to ePaper task\r\n",
+                    IMG_LOG, s_info.total_bytes);
     }
 
     /* 后处理完成，缓冲区数据就绪，现在才标记 DONE */

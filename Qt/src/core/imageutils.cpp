@@ -3,6 +3,7 @@
 #include <QBuffer>
 #include <QImageWriter>
 #include <QColor>
+#include <QTransform>
 #include <QtMath>
 #include <cmath>
 
@@ -116,29 +117,36 @@ QList<ImageResolution> ImageUtils::resolutions()
 ProcessedImage ImageUtils::processFromCropped(const QImage &cropped, int targetW, int targetH,
                                                int jpegQuality)
 {
-    // 缩放到目标分辨率
+    // 缩放到目标分辨率 (portrait)
     QImage scaled = cropped.scaled(targetW, targetH, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
     scaled = scaled.convertToFormat(QImage::Format_RGB888);
 
-    // JPEG 极限有损压缩
+    // 旋转 90° CW → landscape, 设备端流式解码无需旋转
+    QTransform rot;
+    rot.rotate(90);
+    QImage landscape = scaled.transformed(rot);
+
+    // JPEG 极限有损压缩 (landscape)
     QByteArray jpegData;
     QBuffer buffer(&jpegData);
     buffer.open(QIODevice::WriteOnly);
     QImageWriter writer(&buffer, "jpeg");
     writer.setQuality(jpegQuality);
-    writer.write(scaled);
+    writer.write(landscape);
     buffer.close();
 
     int pktCount = (jpegData.size() + MeshProtocol::IMG_PKT_PAYLOAD - 1) / MeshProtocol::IMG_PKT_PAYLOAD;
 
-    // 解码 JPEG 并模拟墨水屏 6 色抖动作为预览
+    // 解码 landscape JPEG 并模拟墨水屏 6 色抖动, 再旋转回 portrait 作为预览
     QImage jpegDecoded;
     jpegDecoded.loadFromData(jpegData, "JPEG");
     jpegDecoded = jpegDecoded.convertToFormat(QImage::Format_RGB888);
     QImage dithered = ditherToEpdPalette(jpegDecoded);
+    QTransform rotBack;
+    rotBack.rotate(-90);
 
     ProcessedImage result;
-    result.previewBitmap = dithered;
+    result.previewBitmap = dithered.transformed(rotBack);
     result.imageData     = jpegData;
     result.dataSize      = jpegData.size();
     result.packetCount   = pktCount;

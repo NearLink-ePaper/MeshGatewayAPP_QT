@@ -143,7 +143,14 @@ void ImagePreviewDialog::buildUI()
         BleManager::ImageSendMode mode = BleManager::FastMode;
         if (m_modeCombo && m_modeCombo->currentIndex() == 1)
             mode = BleManager::AckMode;
-        emit sendRequested(m_processed.imageData, m_resolution.width, m_resolution.height,
+        // JPEG 模式: 图像已预旋转为 landscape, 发送实际 JPEG 尺寸 (height×width)
+        int sendW = m_resolution.width;
+        int sendH = m_resolution.height;
+        if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
+            sendW = m_resolution.height;
+            sendH = m_resolution.width;
+        }
+        emit sendRequested(m_processed.imageData, sendW, sendH,
                            mode, m_processed.imageMode, m_processed.previewBitmap);
         accept();
     });

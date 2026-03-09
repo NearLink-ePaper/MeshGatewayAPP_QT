@@ -1,25 +1,27 @@
 /**
  * @file  jpeg_decoder.c
- * @brief JPEG 解码 + Floyd-Steinberg 6色抖动 → 4bpp 墨水屏输出
+ * @brief JPEG 流式解码 + Floyd-Steinberg 6色抖动 → 直接输出到 ePaper SPI
  *
  * @details
- *   逐 MCU 行流式处理，内存占用极小:
- *     - TJpgDec 逐 MCU 输出 RGB 像素到"行条带缓冲区"(width × mcu_h × 3)
- *     - 每攒满一个 MCU 行 (检测到 rect->top 变化) 立即执行 Floyd-Steinberg 抖动
- *     - 抖动结果直接写入 4bpp 输出缓冲区
- *     - 误差缓冲区仅保留两行 (当前行 + 下一行)
+ *   PC 端预先将图像旋转为横屏 (landscape, 800×480), 设备端:
+ *     - TJpgDec 逐 MCU 输出 RGB 像素到"行条带缓冲区"
+ *     - 每攒满一个 MCU 行立即执行 Floyd-Steinberg 抖动
+ *     - 抖动结果通过 EPD_SendData() 直接发送到 ePaper SPI
+ *     - 无需 192KB 4bpp 中间缓冲区, 无需旋转
  *
- *   峰值动态内存 (~33KB for 480px wide):
+ *   峰值动态内存 (~52KB for 800px wide):
  *     - TJpgDec 工作池: 4KB
- *     - MCU 行条带 RGB: width × 16 × 3 ≈ 23KB
- *     - 误差缓冲: 2 × width × 3 × 2 ≈ 6KB
+ *     - MCU 行条带 RGB: width × 16 × 3 ≈ 38KB
+ *     - 误差缓冲: 2 × width × 3 × 2 ≈ 10KB
  */
 
 #include "jpeg_decoder.h"
 #include "tjpgd.h"
+#include "epaper.h"
 #include "osal_debug.h"
 #include "soc_osal.h"
 #include "securec.h"
+#include "watchdog.h"
 #include <string.h>
 
 #define JPEG_LOG "[jpeg dec]"
@@ -59,9 +61,8 @@ static size_t jpeg_input_func(JDEC *jd, uint8_t *buff, size_t nbyte)
     return nbyte;
 }
 
-/* ── On-the-fly 抖动上下文 (全局单例) ──────────────────── */
+/* ── 流式抖动上下文 (全局单例) ──────────────────────────── */
 static struct {
-    uint8_t  *out_4bpp;       /* 4bpp 输出缓冲区 (外部提供) */
     uint16_t  img_w;          /* 图像宽度 */
     uint16_t  img_h;          /* 图像高度 */
     uint8_t  *strip_rgb;      /* MCU 行条带 RGB 缓冲 (img_w × mcu_h × 3) */
@@ -92,7 +93,7 @@ static uint8_t find_nearest_epd(int r, int g, int b)
 }
 
 /**
- * 对指定行做 Floyd-Steinberg 抖动并写入 4bpp 输出
+ * 对指定行做 Floyd-Steinberg 抖动, 4bpp 结果直接发送到 ePaper SPI
  * @param strip_local_y  该行在条带缓冲中的局部行号
  * @param abs_y          该行在整幅图像中的绝对 Y 坐标
  */
@@ -102,33 +103,36 @@ static void dither_one_row(uint16_t strip_local_y, uint16_t abs_y)
     int16_t *ec = s_dctx.err_cur;
     int16_t *en = s_dctx.err_nxt;
     uint8_t *rgb_row = &s_dctx.strip_rgb[(uint32_t)strip_local_y * w * 3];
-    uint8_t *out_row = &s_dctx.out_4bpp[(uint32_t)abs_y * (w / 2)];
     uint16_t x;
     int16_t *tmp;
+    uint8_t hi_nib = 0;
+    int oldR, oldG, oldB;
+    uint8_t ci, epd_code;
+    int errR, errG, errB;
 
     /* 清零下一行误差 */
     (void)memset_s(en, (uint32_t)w * 3 * sizeof(int16_t), 0,
                    (uint32_t)w * 3 * sizeof(int16_t));
 
     for (x = 0; x < w; x++) {
-        int oldR = clamp8((int)rgb_row[x*3+0] + ec[x*3+0]);
-        int oldG = clamp8((int)rgb_row[x*3+1] + ec[x*3+1]);
-        int oldB = clamp8((int)rgb_row[x*3+2] + ec[x*3+2]);
+        oldR = clamp8((int)rgb_row[x*3+0] + ec[x*3+0]);
+        oldG = clamp8((int)rgb_row[x*3+1] + ec[x*3+1]);
+        oldB = clamp8((int)rgb_row[x*3+2] + ec[x*3+2]);
 
-        uint8_t ci = find_nearest_epd(oldR, oldG, oldB);
-        uint8_t epd_code = kPaletteToEpd[ci];
+        ci = find_nearest_epd(oldR, oldG, oldB);
+        epd_code = kPaletteToEpd[ci];
 
-        /* 写入 4bpp packed (高 nibble = 偶像素, 低 nibble = 奇像素) */
+        /* 打包 4bpp 并直接发送到 ePaper SPI */
         if (x & 1) {
-            out_row[x / 2] |= epd_code;
+            EPD_SendData(hi_nib | epd_code);
         } else {
-            out_row[x / 2] = (uint8_t)(epd_code << 4);
+            hi_nib = (uint8_t)(epd_code << 4);
         }
 
-        /* 误差 */
-        int errR = oldR - (int)kPalette[ci].r;
-        int errG = oldG - (int)kPalette[ci].g;
-        int errB = oldB - (int)kPalette[ci].b;
+        /* 误差扩散 */
+        errR = oldR - (int)kPalette[ci].r;
+        errG = oldG - (int)kPalette[ci].g;
+        errB = oldB - (int)kPalette[ci].b;
 
         if (x + 1 < w) {
             ec[(x+1)*3+0] += (int16_t)(errR * 7 / 16);
@@ -152,13 +156,18 @@ static void dither_one_row(uint16_t strip_local_y, uint16_t abs_y)
         }
     }
 
+    /* 奇数宽度: 发送最后半字节 (填充白色) */
+    if (w & 1) {
+        EPD_SendData(hi_nib | EPD_WHITE);
+    }
+
     /* 交换 cur/nxt */
     tmp = s_dctx.err_cur;
     s_dctx.err_cur = s_dctx.err_nxt;
     s_dctx.err_nxt = tmp;
 }
 
-/** 抖动当前条带中的所有行 */
+/** 抖动当前条带中的所有行, 直接输出到 EPD */
 static void dither_strip(void)
 {
     uint16_t strip_h = s_dctx.mcu_h;
@@ -168,6 +177,7 @@ static void dither_strip(void)
     }
     for (row = 0; row < strip_h; row++) {
         dither_one_row(row, s_dctx.strip_top + row);
+        uapi_watchdog_kick();
     }
 }
 
@@ -218,18 +228,23 @@ static int jpeg_output_cb(JDEC *jd, void *bitmap, JRECT *rect)
 }
 
 /* ── 公共 API ─────────────────────────────────────────── */
-bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
-                        uint8_t *out_4bpp, uint32_t out_cap,
-                        uint16_t *out_width, uint16_t *out_height)
+bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
 {
     JDEC jdec;
     JRESULT rc;
-    uint8_t *pool = NULL;
-    bool result = false;
-    uint16_t w = 0, h = 0;
+    uint8_t *pool;
+    bool result;
+    uint16_t w, h;
     mem_stream_t stream;
-    uint32_t err_row_bytes = 0;
-    uint32_t strip_bytes = 0;
+    uint32_t err_row_bytes;
+    uint32_t strip_bytes;
+
+    pool = NULL;
+    result = false;
+    w = 0;
+    h = 0;
+    err_row_bytes = 0;
+    strip_bytes = 0;
 
     /* 分配 TJpgDec 工作池 */
     pool = (uint8_t *)osal_vmalloc(TJPGD_POOL_SIZE);
@@ -250,19 +265,13 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
         goto cleanup;
     }
 
-    w = (uint16_t)jdec.width;
-    h = (uint16_t)jdec.height;
-    osal_printk("%s JPEG: %dx%d, %d bytes\r\n", JPEG_LOG, w, h, jpeg_size);
+    w = jdec.width;
+    h = jdec.height;
+    osal_printk("%s JPEG: %dx%d, %lu bytes\r\n", JPEG_LOG, w, h,
+                (unsigned long)jpeg_size);
 
-    if ((uint32_t)(w / 2) * h > out_cap) {
-        osal_printk("%s output buf too small: need %lu, have %lu\r\n",
-                    JPEG_LOG, (unsigned long)((uint32_t)(w/2)*h), (unsigned long)out_cap);
-        goto cleanup;
-    }
-
-    /* 初始化 on-the-fly 抖动上下文 */
+    /* 初始化流式抖动上下文 */
     (void)memset_s(&s_dctx, sizeof(s_dctx), 0, sizeof(s_dctx));
-    s_dctx.out_4bpp  = out_4bpp;
     s_dctx.img_w     = w;
     s_dctx.img_h     = h;
     s_dctx.mcu_h     = (uint16_t)(jdec.msy * 8);  /* MCU 行高: 8 or 16 */
@@ -287,10 +296,10 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
     (void)memset_s(s_dctx.err_cur, err_row_bytes, 0, err_row_bytes);
     (void)memset_s(s_dctx.err_nxt, err_row_bytes, 0, err_row_bytes);
 
-    /* 清零 4bpp 输出 (0x11 = White|White) */
-    (void)memset_s(out_4bpp, out_cap, 0x11, (uint32_t)(w / 2) * h);
+    /* 开始 ePaper 像素数据传输 (0x10 = DTM1) */
+    EPD_SendCommand(0x10);
 
-    /* 解码 — 回调中自动逐 MCU 行抖动 */
+    /* 解码 — 回调中逐 MCU 行抖动并发送到 EPD SPI */
     rc = jd_decomp(&jdec, jpeg_output_cb, 0);
     if (rc != JDR_OK) {
         osal_printk("%s jd_decomp failed: %d\r\n", JPEG_LOG, rc);
@@ -302,11 +311,8 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
         dither_strip();
     }
 
-    *out_width  = w;
-    *out_height = h;
     result = true;
-    osal_printk("%s done: %dx%d → 4bpp %lu bytes\r\n",
-                JPEG_LOG, w, h, (unsigned long)((uint32_t)(w / 2) * h));
+    osal_printk("%s stream done: %dx%d\r\n", JPEG_LOG, w, h);
 
 cleanup:
     if (s_dctx.strip_rgb) { osal_vfree(s_dctx.strip_rgb); }

@@ -9,10 +9,11 @@
 
 #include "epaper.h"
 #include "image_receiver.h"
+#include "jpeg_decoder.h"
 
 #define SPI_WAIT_CYCLES 0x10
 
-#define SPI_TASK_STACK_SIZE 0x1000
+#define SPI_TASK_STACK_SIZE 0x2000
 #define SPI_TASK_DURATION_MS 1000
 #define SPI_TASK_PRIO (osPriority_t)(17)
 
@@ -21,12 +22,15 @@ static const uint8_t       *g_epaper_mesh_buf    = NULL;
 static volatile uint16_t    g_epaper_mesh_width  = 0;
 static volatile uint16_t    g_epaper_mesh_height = 0;
 static volatile uint8_t     g_epaper_mesh_mode   = 0;
+static volatile uint16_t    g_epaper_mesh_data_size = 0;
 
-void epaper_trigger_mesh_image(const uint8_t *buf, uint16_t width, uint16_t height, uint8_t mode) {
-    g_epaper_mesh_buf    = buf;
-    g_epaper_mesh_width  = width;
-    g_epaper_mesh_height = height;
-    g_epaper_mesh_mode   = mode;
+void epaper_trigger_mesh_image(const uint8_t *buf, uint16_t width, uint16_t height,
+                               uint8_t mode, uint16_t data_size) {
+    g_epaper_mesh_buf       = buf;
+    g_epaper_mesh_width     = width;
+    g_epaper_mesh_height    = height;
+    g_epaper_mesh_mode      = mode;
+    g_epaper_mesh_data_size = data_size;
     osal_sem_up(&g_epaper_sem);
 }
 
@@ -101,12 +105,18 @@ static void *epaper_init_task(const char *arg) {
             const uint8_t *buf    = g_epaper_mesh_buf;
             uint16_t       width  = g_epaper_mesh_width;
             uint16_t       height = g_epaper_mesh_height;
-            uint8_t mode = g_epaper_mesh_mode;
+            uint8_t  mode      = g_epaper_mesh_mode;
+            uint16_t data_size = g_epaper_mesh_data_size;
             if (buf != NULL) {
-                printf("ePaper: displaying mesh image %ux%u mode=%d\r\n", width, height, mode);
+                printf("ePaper: displaying mesh image %ux%u mode=%d size=%u\r\n",
+                       width, height, mode, data_size);
                 EPD_Init();
                 if (mode == IMG_MODE_JPEG) {
-                    EPD_display_4bpp(buf, width, height);
+                    /* 流式解码: JPEG → 抖动 → 直接 SPI 输出, 无需 192KB 缓冲 */
+                    if (!jpeg_decode_stream_epd(buf, (uint32_t)data_size)) {
+                        printf("ePaper: JPEG stream decode failed!\r\n");
+                    }
+                    EPD_refresh();
                 } else {
                     EPD_display_1bpp(buf, width, height);
                 }

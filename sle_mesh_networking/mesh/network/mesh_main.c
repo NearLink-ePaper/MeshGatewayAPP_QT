@@ -917,7 +917,8 @@ static void *mesh_main_task(const char *arg)
             if (img->state == IMG_STATE_DONE && !img_epaper_triggered) {
                 img_epaper_triggered = true;
                 epaper_trigger_mesh_image(image_receiver_get_buffer(),
-                                          img->width, img->height, img->mode);
+                                          img->width, img->height, img->mode,
+                                          img->total_bytes);
                 image_receiver_reset();  /* 重置状态机，准备接收下一张 */
             } else if (img->state != IMG_STATE_DONE) {
                 img_epaper_triggered = false;  /* 新传输开始，清除触发标志 */
