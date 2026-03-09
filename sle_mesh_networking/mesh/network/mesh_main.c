@@ -768,15 +768,7 @@ static void *mesh_main_task(const char *arg)
         osal_printk("%s UART callback register failed: 0x%x\r\n", MESH_LOG_TAG, ret);
     }
 
-    /* ---- 5. WiFi SoftAP + Socket 图传服务器 ---- */
-    osal_printk("%s starting WiFi SoftAP...\r\n", MESH_LOG_TAG);
-    if (wifi_softap_start() == 0) {
-        wifi_socket_server_start();
-    } else {
-        osal_printk("%s WiFi SoftAP failed, socket server skipped\r\n", MESH_LOG_TAG);
-    }
-
-    /* ---- 6. 进入活跃状态 ---- */
+    /* ---- 5. 进入活跃状态 (WiFi SoftAP 延迟到 BLE 连接后启动，避免射频冲突) ---- */
     g_node_state = MESH_NODE_STATE_ACTIVE;
     osal_printk("%s ===== Mesh node 0x%04X ACTIVE =====\r\n",
                 MESH_LOG_TAG, g_mesh_node_addr);
@@ -787,6 +779,7 @@ static void *mesh_main_task(const char *arg)
     uint32_t last_route_cleanup_ms = 0;
     uint32_t last_stats_ms = 0;
     bool img_epaper_triggered = false;  /* 防止同一张图重复触发刷屏 */
+    bool wifi_started = false;             /* WiFi SoftAP 延迟启动标志 */
 
     while (1) {
         uint32_t now = osal_get_tick_ms();
@@ -910,6 +903,17 @@ static void *mesh_main_task(const char *arg)
                         mesh_route_get_count(),
                         ble_gateway_is_connected() ? "connected" : "idle");
             last_stats_ms = now;
+        }
+
+        /* ---- WiFi SoftAP 延迟启动: BLE 连接建立后才开 WiFi，避免射频冲突 ---- */
+        if (!wifi_started && ble_gateway_is_connected()) {
+            osal_printk("%s BLE connected → starting WiFi SoftAP...\r\n", MESH_LOG_TAG);
+            if (wifi_softap_start() == 0) {
+                wifi_socket_server_start();
+            } else {
+                osal_printk("%s WiFi SoftAP failed\r\n", MESH_LOG_TAG);
+            }
+            wifi_started = true;
         }
 
         /* ---- BLE 断线: 不再暂停 SLE, BLE/SLE 并行广播 ---- */
