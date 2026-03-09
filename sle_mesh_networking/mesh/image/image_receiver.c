@@ -517,7 +517,7 @@ static void handle_end(uint16_t src_addr, const uint8_t *data, uint16_t len)
         return;
     }
 
-    s_info.state = IMG_STATE_DONE;
+    /* 先发送 RESULT 告知网关 CRC 通过 (不设 DONE, 等后处理完成) */
     send_result(s_info.gw_addr, IMG_RESULT_OK);
 
     /* ── 后处理: 根据 mode 做解压/解码 ── */
@@ -566,6 +566,9 @@ static void handle_end(uint16_t src_addr, const uint8_t *data, uint16_t len)
         osal_printk("%s JPEG decoded: %dx%d → 4bpp %luB\r\n",
                     IMG_LOG, dec_w, dec_h, (unsigned long)out_4bpp_size);
     }
+
+    /* 后处理完成，缓冲区数据就绪，现在才标记 DONE */
+    s_info.state = IMG_STATE_DONE;
 
     osal_printk("%s DONE: %dx%d %dB rounds=%d → buffer ready\r\n",
                 IMG_LOG, s_info.width, s_info.height, s_info.total_bytes,
