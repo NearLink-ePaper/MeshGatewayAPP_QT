@@ -1,0 +1,437 @@
+/* ═══════════════════════════════════════════════════════
+   NearLink Mesh — Modern Dark Theme v2
+   ═══════════════════════════════════════════════════════ */
+
+/* ─── Color Palette ───────────────────────────────────
+   bg-base:    #0D1117        bg-surface:  #161B22
+   bg-card:    #1C2128        bg-elevated: #21262D
+   border:     rgba(240,246,252,0.06)
+   accent:     #58A6FF        accent-hover: #79C0FF
+   green:      #3FB950        yellow: #D29922
+   red:        #F85149        muted: #8B949E
+   ─────────────────────────────────────────────────── */
+
+/* ─── Global ───────────────────────────────────────── */
+QWidget {
+    background-color: #0D1117;
+    color: #E6EDF3;
+    font-size: 13px;
+}
+
+QMainWindow {
+    background-color: #0D1117;
+}
+
+QLabel {
+    background-color: transparent;
+}
+
+/* ─── Top Bar ──────────────────────────────────────── */
+QWidget#topBar {
+    background-color: #161B22;
+    border-bottom: 1px solid rgba(240, 246, 252, 0.1);
+}
+
+QLabel#appTitle {
+    color: #FFFFFF;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+QLabel#statusDot {
+    min-width: 10px;
+    max-width: 10px;
+    min-height: 10px;
+    max-height: 10px;
+    border-radius: 5px;
+}
+
+/* ─── Debug Label ──────────────────────────────────── */
+AAWidget#debugCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #26D29922;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+QLabel#debugLabel {
+    background-color: transparent;
+    color: #D29922;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 10px 12px;
+}
+
+/* ─── Scan Button ──────────────────────────────────── */
+AAButton#scanButton {
+    background-color: transparent;
+    border: none;
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 24px;
+    qproperty-bgColor: #238636;
+    qproperty-borderColor: #663FB950;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+AAButton#scanButton:disabled {
+    color: #484F58;
+}
+
+/* ─── Hint Label ───────────────────────────────────── */
+QLabel#hintLabel {
+    color: #484F58;
+    font-size: 13px;
+    padding: 48px 24px;
+}
+
+/* ─── Device List ──────────────────────────────────── */
+QListWidget#deviceList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+QListWidget#deviceList::item {
+    background-color: transparent;
+    border: none;
+    margin: 3px 0px;
+    padding: 0px;
+}
+
+/* ─── Device Card ──────────────────────────────────── */
+AAWidget#deviceCard {
+    background-color: transparent;
+}
+QLabel#deviceIcon {
+    background-color: rgba(88, 166, 255, 0.12);
+    border-radius: 8px;
+}
+QLabel#deviceName {
+    color: #E6EDF3;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0px 0px 4px 0px;
+    min-height: 20px;
+}
+QLabel#deviceAddr {
+    color: #8B949E;
+    font-size: 11px;
+    font-family: monospace;
+}
+QLabel#rssiGood {
+    color: #3FB950;
+    font-size: 12px;
+    font-weight: 600;
+}
+QLabel#rssiWeak {
+    color: #D29922;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ─── Device Info Card ─────────────────────────────── */
+AAWidget#deviceInfoCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #333FB950;
+    qproperty-borderRadius: 12;
+    qproperty-borderWidth: 1;
+}
+QLabel#connDeviceName {
+    color: #E6EDF3;
+    font-weight: 700;
+    font-size: 15px;
+}
+QLabel#connGwAddr {
+    color: #3FB950;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+/* ─── Disconnect Button ────────────────────────────── */
+AAButton#disconnectBtn {
+    background-color: transparent;
+    border: none;
+    color: #F85149;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    qproperty-bgColor: #1AF85149;
+    qproperty-borderColor: #40F85149;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
+}
+
+/* ─── Query Topology Button ────────────────────────── */
+AAButton#queryTopoBtn {
+    background-color: transparent;
+    border: none;
+    color: #58A6FF;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px;
+    qproperty-bgColor: #21262D;
+    qproperty-borderColor: #4058A6FF;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+
+/* ─── Node Card ────────────────────────────────────── */
+AAWidget#nodeCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+AAWidget#nodeCardSelected {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #1C2128;
+    qproperty-borderColor: #8058A6FF;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+
+QWidget#nodeIconGateway {
+    background-color: rgba(63, 185, 80, 0.12);
+    border-radius: 8px;
+}
+QLabel#nodeIconLabelGateway {
+    color: #3FB950;
+    font-weight: 700;
+    font-size: 11px;
+}
+QWidget#nodeIconNormal {
+    background-color: rgba(88, 166, 255, 0.12);
+    border-radius: 8px;
+}
+QLabel#nodeIconLabelNormal {
+    color: #58A6FF;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+AAWidget#nodeCardMulticast {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #1C2128;
+    qproperty-borderColor: #80CE93D8;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+
+QLabel#nodeAddr {
+    color: #E6EDF3;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 600;
+}
+QLabel#hopGateway { color: #3FB950; font-size: 11px; }
+QLabel#hopDirect  { color: #3FB950; font-size: 11px; }
+QLabel#hopMulti   { color: #D29922; font-size: 11px; }
+QLabel#sendIcon   { color: #484F58; font-size: 14px; }
+
+/* ─── Broadcast Card ───────────────────────────────── */
+AAWidget#broadcastCard {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #161B22;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+
+AALineEdit#broadcastInput, AALineEdit#sendDialogInput {
+    background-color: transparent;
+    border: none;
+    color: #E6EDF3;
+    padding: 9px 12px;
+    font-size: 13px;
+    selection-background-color: rgba(88, 166, 255, 0.3);
+    selection-color: #FFFFFF;
+    qproperty-bgColor: #0D1117;
+    qproperty-borderColor: #1AF0F6FC;
+    qproperty-focusBorderColor: #8058A6FF;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
+}
+AALineEdit#broadcastInput::placeholder, AALineEdit#sendDialogInput::placeholder {
+    color: #484F58;
+}
+
+AAButton#broadcastBtn, AAButton#sendDialogSend {
+    background-color: transparent;
+    border: none;
+    color: #FFFFFF;
+    padding: 9px 20px;
+    font-weight: 600;
+    font-size: 13px;
+    qproperty-bgColor: #238636;
+    qproperty-borderColor: #663FB950;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
+}
+
+/* ─── Log Area ─────────────────────────────────────── */
+QLabel#logTitle {
+    color: #8B949E;
+    font-size: 12px;
+    font-weight: 600;
+    padding-left: 4px;
+    text-transform: uppercase;
+}
+
+AAButton#clearLogBtn {
+    background-color: transparent;
+    border: none;
+    color: #484F58;
+    padding: 3px 10px;
+    font-size: 11px;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 6;
+    qproperty-borderWidth: 1;
+}
+
+AAWidget#logContainer {
+    background-color: transparent;
+    border: none;
+    qproperty-bgColor: #0D1117;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 10;
+    qproperty-borderWidth: 1;
+}
+
+QListWidget#logList {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    font-family: monospace;
+    font-size: 11px;
+}
+QListWidget#logList::item {
+    padding: 3px 8px;
+    border: none;
+    border-bottom: 1px solid rgba(240, 246, 252, 0.03);
+}
+
+/* ─── Send Dialog ──────────────────────────────────── */
+QDialog#sendDialog {
+    background-color: #161B22;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 14px;
+}
+QLabel#sendDialogTitle {
+    color: #E6EDF3;
+    font-size: 16px;
+    font-weight: 700;
+}
+QLabel#sendDialogDesc {
+    color: #8B949E;
+    font-size: 12px;
+}
+AAButton#sendDialogCancel {
+    background-color: transparent;
+    border: none;
+    color: #8B949E;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    qproperty-bgColor: #21262D;
+    qproperty-borderColor: #0FF0F6FC;
+    qproperty-borderRadius: 8;
+    qproperty-borderWidth: 1;
+}
+
+/* ─── Connecting Page ──────────────────────────────── */
+QLabel#connectingLabel {
+    color: #E6EDF3;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* ─── Section Separator ───────────────────────────── */
+QFrame#sectionSeparator {
+    background-color: rgba(240, 246, 252, 0.06);
+    border: none;
+    max-height: 1px;
+}
+
+/* ─── Scroll Area ──────────────────────────────────── */
+QScrollArea#nodeScrollArea {
+    background-color: transparent;
+    border: none;
+}
+QWidget#nodeGridContainer {
+    background-color: transparent;
+}
+
+/* ─── Scrollbar (thin style) ──────────────────────── */
+QScrollBar:vertical {
+    background: transparent;
+    width: 6px;
+    margin: 4px 0;
+}
+QScrollBar::handle:vertical {
+    background: rgba(139, 148, 158, 0.25);
+    border-radius: 3px;
+    min-height: 40px;
+}
+QScrollBar::handle:vertical:hover {
+    background: rgba(139, 148, 158, 0.4);
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar:horizontal {
+    height: 0;
+}
+
+/* ─── Progress Bar (connecting) ───────────────────── */
+QProgressBar {
+    background-color: #21262D;
+    border: none;
+    border-radius: 4px;
+    height: 6px;
+}
+QProgressBar::chunk {
+    background-color: #58A6FF;
+    border-radius: 3px;
+}
+
+/* ─── ComboBox (Dialogs) ──────────────────────────── */
+QComboBox {
+    background-color: #21262D;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 6px;
+    color: #E6EDF3;
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: 100px;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+QComboBox QAbstractItemView {
+    background-color: #1C2128;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    color: #E6EDF3;
+    selection-background-color: rgba(88, 166, 255, 0.2);
+    outline: none;
+}
+
+/* ─── Tooltip ─────────────────────────────────────── */
+QToolTip {
+    background-color: #1C2128;
+    color: #E6EDF3;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+}

@@ -1,0 +1,67 @@
+#include "mainwindow.h"
+#include "meshprotocol.h"
+#include "stylemanager.h"
+
+#include <QApplication>
+#include <QLocale>
+#include <QTranslator>
+#include <QFont>
+#include <QIcon>
+#include <QSurfaceFormat>
+
+int main(int argc, char *argv[])
+{
+    // 高分屏支持
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#endif
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
+
+    // 全局多重采样抗锯齿 (4x MSAA)，减少控件边缘锯齿
+    QSurfaceFormat fmt = QSurfaceFormat::defaultFormat();
+    fmt.setSamples(4);
+    QSurfaceFormat::setDefaultFormat(fmt);
+
+    QApplication a(argc, argv);
+    a.setOrganizationName("wellwhz");
+    a.setApplicationVersion(APP_VERSION_STR);
+    a.setWindowIcon(QIcon(":/img/icon.png"));
+
+    // App 名称根据系统语言切换
+    if (QLocale::system().language() == QLocale::Chinese)
+        a.setApplicationName("星闪智能网关");
+    else
+        a.setApplicationName("NearLink Mesh");
+
+    // 注册自定义类型，确保信号槽跨线程工作
+    qRegisterMetaType<MeshNode>("MeshNode");
+    qRegisterMetaType<UpstreamMessage>("UpstreamMessage");
+
+    // 多语言支持 — 从 qrc 资源加载 .qm
+    QTranslator translator;
+    const QStringList uiLanguages = QLocale::system().uiLanguages();
+    for (const QString &locale : uiLanguages) {
+        const QString baseName = "NearLink_Mesh_" + QLocale(locale).name();
+        if (translator.load(":/i18n/" + baseName)) {
+            a.installTranslator(&translator);
+            break;
+        }
+    }
+
+    // iOS 风格暗色主题
+    a.setStyleSheet(StyleManager::loadStyleSheet());
+
+    // 使用系统默认字体，仅附加抗锯齿渲染
+    QFont defaultFont = a.font();
+    defaultFont.setStyleStrategy(QFont::PreferAntialias);
+    defaultFont.setHintingPreference(QFont::PreferFullHinting);
+    a.setFont(defaultFont);
+
+    MainWindow w;
+    w.show();
+    return a.exec();
+}
