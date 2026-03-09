@@ -120,7 +120,7 @@ void MainWindow::setupPages()
     spinner->setRange(0, 0); // indeterminate
     spinner->setFixedWidth(120);
     spinner->setTextVisible(false);
-    m_connectingLabel = new QLabel(tr("Connecting..."), m_connectingPage);
+    m_connectingLabel = new QLabel(tr("连接中..."), m_connectingPage);
     m_connectingLabel->setObjectName("connectingLabel");
     m_connectingLabel->setAlignment(Qt::AlignCenter);
     connectingLayout->addWidget(spinner, 0, Qt::AlignCenter);
@@ -148,7 +148,7 @@ void MainWindow::onConnStateChanged(BleManager::ConnState state)
         m_autoTopoTimer.stop();
         break;
     case BleManager::Connecting:
-        m_connectingLabel->setText(tr("Connecting to %1 ...").arg(m_ble->deviceName()));
+        m_connectingLabel->setText(tr("正在连接 %1 ...").arg(m_ble->deviceName()));
         m_stack->setCurrentIndex(1);
         break;
     case BleManager::Connected:
@@ -259,9 +259,9 @@ void MainWindow::openImagePicker(const MeshNode &node, const QList<quint16> &mul
     QStringList filters;
     for (const auto &fmt : QImageReader::supportedImageFormats())
         filters << QStringLiteral("*.%1").arg(QString::fromLatin1(fmt));
-    QString filter = tr("Images (%1)").arg(filters.join(' '));
+    QString filter = tr("图片 (%1)").arg(filters.join(' '));
 
-    QString path = QFileDialog::getOpenFileName(this, tr("Select Image"), QString(), filter);
+    QString path = QFileDialog::getOpenFileName(this, tr("选择图片"), QString(), filter);
     if (path.isEmpty()) return;
 
     QImage img(path);

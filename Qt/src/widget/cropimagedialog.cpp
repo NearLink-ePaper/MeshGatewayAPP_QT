@@ -269,9 +269,9 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
 
     QString title;
     if (multicastCount > 0)
-        title = tr("Crop Image → Multicast %1 nodes").arg(multicastCount);
+        title = tr("裁剪图片 → 组播 %1 节点").arg(multicastCount);
     else
-        title = tr("Crop Image → 0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper();
+        title = tr("裁剪图片 → 0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper();
     setWindowTitle(title);
     // 移动端自适应尺寸
     int scrW = 420, scrH = 700;
@@ -286,13 +286,13 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     layout->setSpacing(dp(8));
 
     // 提示
-    auto *hint = new QLabel(tr("Drag crop box to adjust area, drag corners to resize"));
+    auto *hint = new QLabel(tr("拖动裁剪框调整位置，拖动角点调整大小"));
     hint->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(11)));
     layout->addWidget(hint);
 
     // 分辨率选择
     auto *resRow = new QHBoxLayout;
-    auto *resLabel = new QLabel(tr("Ratio"));
+    auto *resLabel = new QLabel(tr("尺寸"));
     resLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(12)));
     resRow->addWidget(resLabel);
 
@@ -306,7 +306,7 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     resRow->addStretch();
 
     // 旋转按钮
-    auto *rotateBtn = new QPushButton(tr("Rotate"));
+    auto *rotateBtn = new QPushButton(tr("旋转"));
     connect(rotateBtn, &QPushButton::clicked, this, &CropImageDialog::onRotate);
     resRow->addWidget(rotateBtn);
 
@@ -322,13 +322,13 @@ CropImageDialog::CropImageDialog(const QImage &originalBitmap, const MeshNode &n
     // 按钮行
     auto *btnRow = new QHBoxLayout;
     btnRow->addStretch();
-    auto *cancelBtn = new QPushButton(tr("Cancel"));
+    auto *cancelBtn = new QPushButton(tr("取消"));
     cancelBtn->setFlat(true);
     cancelBtn->setStyleSheet(QStringLiteral("color: #888;"));
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
     btnRow->addWidget(cancelBtn);
 
-    auto *confirmBtn = new AAButton(tr("Confirm Crop"));
+    auto *confirmBtn = new AAButton(tr("确认裁剪"));
     confirmBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: #4FC3F7; color: white; font-weight: bold; "
         "border-radius: %1px; padding: %2px %3px; font-size: %4px; }"

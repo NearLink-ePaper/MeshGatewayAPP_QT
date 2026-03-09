@@ -38,7 +38,7 @@ ScanPage::ScanPage(BleManager *ble, SocketTransport *wifi, QWidget *parent)
     mainLayout->addStretch(1);
 
     // 扫描按钮
-    m_scanBtn = new AAButton(tr("Scan Mesh Gateway"), this);
+    m_scanBtn = new AAButton(tr("扫描网关"), this);
     m_scanBtn->setObjectName("scanButton");
     m_scanBtn->setMinimumHeight(48);
     m_scanBtn->setCursor(Qt::PointingHandCursor);
@@ -46,7 +46,7 @@ ScanPage::ScanPage(BleManager *ble, SocketTransport *wifi, QWidget *parent)
     mainLayout->addWidget(m_scanBtn);
 
     // 提示文本
-    m_hintLabel = new QLabel(tr("Click the button above to scan\nAuto-discover SLE_GW_XXXX devices"), this);
+    m_hintLabel = new QLabel(tr("点击上方按钮开始扫描\n自动发现 SLE_GW_XXXX 设备"), this);
     m_hintLabel->setObjectName("hintLabel");
     m_hintLabel->setAlignment(Qt::AlignCenter);
     mainLayout->addWidget(m_hintLabel);
@@ -81,11 +81,11 @@ void ScanPage::onConnStateChanged(BleManager::ConnState state)
 {
     bool scanning = (state == BleManager::Scanning);
     m_scanBtn->setEnabled(!scanning);
-    m_scanBtn->setText(scanning ? tr("Scanning...") : tr("Scan Mesh Gateway"));
+    m_scanBtn->setText(scanning ? tr("扫描中...") : tr("扫描网关"));
 
     if (scanning) {
         m_remainingSec = 12;
-        m_debugLabel->setText(tr("Scanning... (%1s)").arg(m_remainingSec));
+        m_debugLabel->setText(tr("扫描中... (%1s)").arg(m_remainingSec));
         m_countdownTimer.start();
         m_rssiTimer.start();
     } else {
@@ -97,7 +97,7 @@ void ScanPage::onConnStateChanged(BleManager::ConnState state)
 void ScanPage::onCountdownTick()
 {
     if (--m_remainingSec > 0) {
-        m_debugLabel->setText(tr("Scanning... (%1s)").arg(m_remainingSec));
+        m_debugLabel->setText(tr("扫描中... (%1s)").arg(m_remainingSec));
     } else {
         m_countdownTimer.stop();
     }
@@ -212,7 +212,7 @@ void ScanPage::refreshDeviceList()
         infoLayout->addWidget(addrLabel);
         hLayout->addLayout(infoLayout, 1);
 
-        auto *tagLabel = new QLabel(tr("TCP"), widget);
+        auto *tagLabel = new QLabel(tr("WiFi"), widget);
         tagLabel->setObjectName("rssiGood");
         hLayout->addWidget(tagLabel, 0, Qt::AlignVCenter);
 

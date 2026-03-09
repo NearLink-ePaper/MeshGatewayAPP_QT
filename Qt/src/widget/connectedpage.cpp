@@ -40,9 +40,9 @@ NodeCardWidget::NodeCardWidget(const MeshNode &node, QWidget *parent)
     QString hopText;
     QString hopObj;
     switch (node.hops) {
-    case 0:  hopText = tr("Gateway"); hopObj = "hopGateway"; break;
-    case 1:  hopText = tr("Direct");  hopObj = "hopDirect";  break;
-    default: hopText = tr("%1 hop(s)").arg(node.hops); hopObj = "hopMulti"; break;
+    case 0:  hopText = tr("网关"); hopObj = "hopGateway"; break;
+    case 1:  hopText = tr("直连"); hopObj = "hopDirect";  break;
+    default: hopText = tr("%1 跳").arg(node.hops); hopObj = "hopMulti"; break;
     }
     auto *hopLabel = new QLabel(hopText, this);
     hopLabel->setObjectName(hopObj);
@@ -128,7 +128,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_progressLabel->setObjectName("imgProgressLabel");
     m_progressLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(11)));
     progLayout->addWidget(m_progressLabel);
-    m_cancelImgBtn = new AAButton(tr("Cancel"), this);
+    m_cancelImgBtn = new AAButton(tr("取消"), this);
     m_cancelImgBtn->setObjectName("cancelImgBtn");
     m_cancelImgBtn->setCursor(Qt::PointingHandCursor);
     m_cancelImgBtn->setStyleSheet(QStringLiteral(
@@ -155,7 +155,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     infoLayout->addWidget(m_gwAddrLabel);
     deviceLayout->addLayout(infoLayout, 1);
 
-    m_disconnectBtn = new AAButton(tr("Disconnect"), this);
+    m_disconnectBtn = new AAButton(tr("断开连接"), this);
     m_disconnectBtn->setObjectName("disconnectBtn");
     m_disconnectBtn->setCursor(Qt::PointingHandCursor);
     connect(m_disconnectBtn, &QPushButton::clicked, this, &ConnectedPage::onDisconnectClicked);
@@ -164,7 +164,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     mainLayout->addWidget(deviceCard);
 
     // 查询拓扑按钮
-    m_queryTopoBtn = new AAButton(tr("Query Nodes"), this);
+    m_queryTopoBtn = new AAButton(tr("查询节点"), this);
     m_queryTopoBtn->setObjectName("queryTopoBtn");
     m_queryTopoBtn->setMinimumHeight(40);
     m_queryTopoBtn->setCursor(Qt::PointingHandCursor);
@@ -200,7 +200,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_multicastLabel = new QLabel;
     m_multicastLabel->setStyleSheet(QStringLiteral("color: #CE93D8; font-size: %1px;").arg(dp(12)));
     mcastLayout->addWidget(m_multicastLabel, 1);
-    m_multicastSendBtn = new AAButton(tr("Multicast Send"), this);
+    m_multicastSendBtn = new AAButton(tr("组播发送"), this);
     m_multicastSendBtn->setCursor(Qt::PointingHandCursor);
     m_multicastSendBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: rgba(156,39,176,0.25); color: #CE93D8; font-weight: bold; "
@@ -209,7 +209,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
         .arg(dp(6)).arg(dp(6)).arg(dp(14)).arg(dp(12)));
     connect(m_multicastSendBtn, &QPushButton::clicked, this, &ConnectedPage::onMulticastSendClicked);
     mcastLayout->addWidget(m_multicastSendBtn);
-    m_multicastClearBtn = new AAButton(tr("Clear"), this);
+    m_multicastClearBtn = new AAButton(tr("清除选择"), this);
     m_multicastClearBtn->setCursor(Qt::PointingHandCursor);
     m_multicastClearBtn->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(11)));
     connect(m_multicastClearBtn, &QPushButton::clicked, this, [this]() {
@@ -227,7 +227,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
 
     m_broadcastInput = new AALineEdit(this);
     m_broadcastInput->setObjectName("broadcastInput");
-    m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
+    m_broadcastInput->setPlaceholderText(tr("输入广播数据..."));
     m_broadcastInput->setAttribute(Qt::WA_InputMethodEnabled, true);
     m_broadcastInput->setInputMethodHints(Qt::ImhNone);
     // IME 预编辑文字高亮色，避免深色背景下看不清
@@ -238,7 +238,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     connect(m_broadcastInput, &QLineEdit::returnPressed, this, &ConnectedPage::onBroadcastClicked);
     bcastLayout->addWidget(m_broadcastInput, 1);
 
-    m_broadcastBtn = new AAButton(tr("Send"), this);
+    m_broadcastBtn = new AAButton(tr("发送"), this);
     m_broadcastBtn->setObjectName("broadcastBtn");
     m_broadcastBtn->setCursor(Qt::PointingHandCursor);
     connect(m_broadcastBtn, &QPushButton::clicked, this, &ConnectedPage::onBroadcastClicked);
@@ -248,11 +248,11 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
 
     // 通信日志标题行
     auto *logHeader = new QHBoxLayout();
-    auto *logTitle = new QLabel(tr("Communication Log"), this);
+    auto *logTitle = new QLabel(tr("通信日志"), this);
     logTitle->setObjectName("logTitle");
     logHeader->addWidget(logTitle);
     logHeader->addStretch();
-    auto *clearLogBtn = new AAButton(tr("Clear"), this);
+    auto *clearLogBtn = new AAButton(tr("清除"), this);
     clearLogBtn->setObjectName("clearLogBtn");
     clearLogBtn->setCursor(Qt::PointingHandCursor);
     connect(clearLogBtn, &QPushButton::clicked, this, &ConnectedPage::onClearLogClicked);
@@ -314,7 +314,7 @@ void ConnectedPage::onMessageReceived(const UpstreamMessage &msg)
         m_gwAddr = msg.gatewayAddr;
         QString gwHex = MeshProtocol::addrToHex4(msg.gatewayAddr);
         m_ble->updateDeviceName(QString("sle_gw_%1").arg(gwHex));
-        m_gwAddrLabel->setText(tr("Gateway 0x%1").arg(gwHex));
+        m_gwAddrLabel->setText(tr("网关 0x%1").arg(gwHex));
 
         // 包含网关自身 (hop=0)
         m_nodes.clear();
@@ -322,7 +322,7 @@ void ConnectedPage::onMessageReceived(const UpstreamMessage &msg)
         m_nodes.append(msg.nodes);
         rebuildNodeList();
 
-        addLog(tr("Topology: Gateway 0x%1, %2 node(s)").arg(gwHex).arg(msg.nodes.size()));
+        addLog(tr("拓扑: 网关 0x%1, %2 个节点").arg(gwHex).arg(msg.nodes.size()));
         break;
     }
     case UpstreamMessage::DataFromNode: {
@@ -339,7 +339,7 @@ void ConnectedPage::onMessageReceived(const UpstreamMessage &msg)
 void ConnectedPage::onQueryTopoClicked()
 {
     m_ble->queryTopology();
-    addLog(QString::fromUtf8("\xe2\x86\x92 ") + tr("Query topology"));
+    addLog(QString::fromUtf8("\xe2\x86\x92 ") + tr("查询拓扑"));
 }
 
 void ConnectedPage::onDisconnectClicked()
@@ -360,7 +360,7 @@ void ConnectedPage::onBroadcastClicked()
                    .arg(MeshProtocol::addrToHex4(node.addr), text));
     } else {
         m_ble->broadcast(text.toUtf8());
-        addLog(QString::fromUtf8("\xe2\x86\x92 [") + tr("Broadcast") + "] " + text);
+        addLog(QString::fromUtf8("\xe2\x86\x92 [") + tr("广播") + "] " + text);
     }
     m_broadcastInput->clear();
 }
@@ -369,9 +369,9 @@ void ConnectedPage::updateSendPlaceholder()
 {
     if (m_selectedNodeIndex >= 0 && m_selectedNodeIndex < m_nodes.size()) {
         QString addr = MeshProtocol::addrToHex4(m_nodes[m_selectedNodeIndex].addr);
-        m_broadcastInput->setPlaceholderText(tr("Send to 0x%1...").arg(addr));
+        m_broadcastInput->setPlaceholderText(tr("发送至 0x%1...").arg(addr));
     } else {
-        m_broadcastInput->setPlaceholderText(tr("Enter broadcast data..."));
+        m_broadcastInput->setPlaceholderText(tr("输入广播数据..."));
     }
 }
 
@@ -454,7 +454,7 @@ void ConnectedPage::updateMulticastUI()
         QStringList addrs;
         for (quint16 a : m_multicastAddrs)
             addrs.append(QStringLiteral("0x%1").arg(a, 4, 16, QChar('0')).toUpper());
-        m_multicastLabel->setText(tr("Multicast: %1 (%2/8)").arg(addrs.join(", ")).arg(m_multicastAddrs.size()));
+        m_multicastLabel->setText(tr("组播: %1 (%2/8)").arg(addrs.join(", ")).arg(m_multicastAddrs.size()));
     }
 }
 
@@ -502,7 +502,7 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
         m_progressContainer->setVisible(true);
         int pct = (state.total > 0) ? state.seq * 100 / state.total : 0;
         m_progressBar->setValue(pct);
-        m_progressLabel->setText(tr("Uploading %1/%2").arg(state.seq).arg(state.total));
+        m_progressLabel->setText(tr("上传 %1/%2").arg(state.seq).arg(state.total));
         m_cancelImgBtn->setVisible(true);
         break;
     }
@@ -510,7 +510,7 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
         m_progressContainer->setVisible(true);
         int pct = (state.total > 0) ? state.seq * 100 / state.total : 50;
         m_progressBar->setValue(pct);
-        m_progressLabel->setText(tr("Waiting ACK %1/%2").arg(state.seq + 1).arg(state.total));
+        m_progressLabel->setText(tr("等待应答 %1/%2").arg(state.seq + 1).arg(state.total));
         m_cancelImgBtn->setVisible(true);
         break;
     }
@@ -518,15 +518,15 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
         m_progressContainer->setVisible(true);
         int pct = (state.total > 0) ? state.rxCount * 100 / state.total : 50;
         m_progressBar->setValue(pct);
-        QString phase = (state.phase == 0) ? tr("transferring") : tr("retransmitting");
-        m_progressLabel->setText(tr("Mesh %1 %2/%3").arg(phase).arg(state.rxCount).arg(state.total));
+        QString phase = (state.phase == 0) ? tr("传输中") : tr("重传中");
+        m_progressLabel->setText(tr("Mesh转发 %1 %2/%3").arg(phase).arg(state.rxCount).arg(state.total));
         m_cancelImgBtn->setVisible(true);
         break;
     }
     case S::ImgFinishing:
         m_progressContainer->setVisible(true);
         m_progressBar->setValue(100);
-        m_progressLabel->setText(tr("Waiting for confirmation..."));
+        m_progressLabel->setText(tr("等待确认..."));
         m_cancelImgBtn->setVisible(true);
         break;
     case S::ImgDone:
@@ -547,7 +547,7 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
     case S::ImgCancelled:
         m_progressContainer->setVisible(true);
         m_progressBar->setValue(0);
-        m_progressLabel->setText(tr("Cancelled"));
+        m_progressLabel->setText(tr("已取消"));
         m_cancelImgBtn->setVisible(false);
         QTimer::singleShot(2000, this, [this]() {
             if (m_ble->imageSendState().type == BleManager::ImgCancelled) {
@@ -560,7 +560,7 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
         m_progressContainer->setVisible(true);
         int pct = (state.mcastTotalTargets > 0) ? state.mcastCompleted * 100 / state.mcastTotalTargets : 50;
         m_progressBar->setValue(pct);
-        m_progressLabel->setText(tr("Multicast %1/%2").arg(state.mcastCompleted).arg(state.mcastTotalTargets));
+        m_progressLabel->setText(tr("组播 %1/%2").arg(state.mcastCompleted).arg(state.mcastTotalTargets));
         m_cancelImgBtn->setVisible(true);
         break;
     }
@@ -570,7 +570,7 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
         int ok = 0;
         for (auto it = state.mcastResults.begin(); it != state.mcastResults.end(); ++it)
             if (it.value() == 0) ++ok;
-        m_progressLabel->setText(tr("Multicast done: %1/%2 OK").arg(ok).arg(state.mcastResults.size()));
+        m_progressLabel->setText(tr("组播完成: %1/%2 成功").arg(ok).arg(state.mcastResults.size()));
         m_cancelImgBtn->setVisible(false);
         QTimer::singleShot(3000, this, [this]() {
             if (m_ble->imageSendState().type == BleManager::ImgMulticastDone) {
@@ -591,7 +591,7 @@ void ConnectedPage::setWifiMode(const WifiDevice &device)
     m_deviceNameLabel->setText(device.name);
     m_gwAddrLabel->setText(
         QStringLiteral("%1:%2  [WiFi]").arg(device.host).arg(device.port));
-    m_debugLabel->setText(tr("WiFi 已连接"));
+    m_debugLabel->setText(tr("WiFi 已连接 ✔"));
 
     // WiFi 模式不需要查询 BLE 拓扑
     m_queryTopoBtn->setVisible(false);
