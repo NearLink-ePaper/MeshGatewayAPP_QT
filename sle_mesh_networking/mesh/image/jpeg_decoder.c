@@ -47,10 +47,10 @@ typedef struct {
     uint32_t       pos;
 } mem_stream_t;
 
-static unsigned int jpeg_input_func(JDEC *jd, uint8_t *buff, unsigned int nbyte)
+static size_t jpeg_input_func(JDEC *jd, uint8_t *buff, size_t nbyte)
 {
     mem_stream_t *s = (mem_stream_t *)jd->device;
-    unsigned int remain = s->size - s->pos;
+    size_t remain = s->size - s->pos;
     if (nbyte > remain) nbyte = remain;
     if (buff) {
         (void)memcpy_s(buff, nbyte, s->data + s->pos, nbyte);
