@@ -62,14 +62,26 @@ void iosOpenPhotoLibrary(std::function<void(QImage)> callback)
     };
     picker.delegate = g_pickerDelegate;
 
-    UIViewController *rootVC =
-        [UIApplication sharedApplication].connectedScenes
-            .allObjects.firstObject;
-    if ([rootVC isKindOfClass:[UIWindowScene class]]) {
-        UIWindowScene *scene = (UIWindowScene *)rootVC;
-        rootVC = scene.windows.firstObject.rootViewController;
+    // 找到 UIWindowScene → 取其 rootViewController
+    UIWindowScene *windowScene = nil;
+    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes.allObjects) {
+        if ([scene isKindOfClass:[UIWindowScene class]] &&
+            scene.activationState == UISceneActivationStateForegroundActive) {
+            windowScene = (UIWindowScene *)scene;
+            break;
+        }
     }
-    // 找到最顶层的 VC
+    if (!windowScene) {
+        for (UIScene *scene in [UIApplication sharedApplication].connectedScenes.allObjects) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                windowScene = (UIWindowScene *)scene;
+                break;
+            }
+        }
+    }
+
+    UIViewController *rootVC = windowScene.windows.firstObject.rootViewController;
+    // 找到最顶层已呈现的 VC
     while (rootVC.presentedViewController) {
         rootVC = rootVC.presentedViewController;
     }
