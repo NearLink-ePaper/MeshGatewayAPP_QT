@@ -10,6 +10,7 @@
 class QLabel;
 class QComboBox;
 class QPushButton;
+class QVBoxLayout;
 
 /**
  * 图片预览对话框

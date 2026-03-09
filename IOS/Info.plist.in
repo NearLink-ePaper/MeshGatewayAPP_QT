@@ -25,6 +25,10 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app needs access to your photo library to select images for display on NearLink e-paper devices.</string>
 
+    <!-- ── 本地网络权限（WiFi SoftAP TCP 连接，iOS 14+）─── -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>This app connects to NearLink e-paper devices over local Wi-Fi (SoftAP) to send images.</string>
+
     <!-- ── 蓝牙权限 ────────────────────────────────────── -->
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>This app uses Bluetooth to connect to NearLink Mesh gateway devices for network topology viewing and data communication.</string>
