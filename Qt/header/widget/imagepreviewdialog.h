@@ -21,10 +21,13 @@ class ImagePreviewDialog : public QDialog
     Q_OBJECT
 
 public:
+    enum TransportMode { BleTransport, WifiTransport };
+
     explicit ImagePreviewDialog(const QImage &croppedBitmap,
                                 const ImageResolution &resolution,
                                 const MeshNode &node,
                                 const QList<quint16> &multicastTargets = {},
+                                TransportMode transport = BleTransport,
                                 QWidget *parent = nullptr);
 
 signals:
@@ -42,6 +45,7 @@ private:
     QImage           m_croppedBitmap;
     ImageResolution  m_resolution;
     ProcessedImage   m_processed;
+    TransportMode    m_transport = BleTransport;
     QComboBox       *m_modeCombo = nullptr;
 };
 

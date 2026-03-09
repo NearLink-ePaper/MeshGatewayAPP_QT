@@ -46,7 +46,8 @@ private:
     void openImagePicker(const MeshNode &node, const QList<quint16> &multicastTargets = {});
     void openCropDialog(const QImage &image, const MeshNode &node, const QList<quint16> &multicastTargets);
     void openPreviewDialog(const QImage &cropped, const ImageResolution &res,
-                           const MeshNode &node, const QList<quint16> &multicastTargets);
+                           const MeshNode &node, const QList<quint16> &multicastTargets,
+                           ImagePreviewDialog::TransportMode transport = ImagePreviewDialog::BleTransport);
 
     BleManager       *m_ble;
     SocketTransport  *m_wifi;
@@ -61,6 +62,7 @@ private:
     QMap<quint16, QImage> m_nodeImages;    // 节点图片缓存
     MeshNode         m_currentNode;        // 当前操作节点
     QList<quint16>   m_currentMcastTargets;
+    ImagePreviewDialog::TransportMode m_currentTransport = ImagePreviewDialog::BleTransport;
 };
 
 #endif // MAINWINDOW_H

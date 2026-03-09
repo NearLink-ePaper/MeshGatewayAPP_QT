@@ -159,20 +159,18 @@ void MainWindow::onConnStateChanged(BleManager::ConnState state)
 
 void MainWindow::onDeviceSelected(int index)
 {
+    m_currentTransport = ImagePreviewDialog::BleTransport;
     m_ble->connectToDevice(index);
 }
 
 void MainWindow::onWifiDeviceSelected(const WifiDevice &device)
 {
-    // 配置 SocketTransport 目标设备
+    m_currentTransport = ImagePreviewDialog::WifiTransport;
     m_wifi->setHost(device.host, device.port);
 
-    // 直接切换到已连接页面（WiFi 模式：无 BLE 拓扑，仅图传）
     m_connectedPage->addLog(tr("📶 WiFi connected to %1 (%2:%3)")
                                 .arg(device.name).arg(device.host).arg(device.port));
     m_stack->setCurrentIndex(2);
-
-    // 状态点显示绿色
     m_statusDot->setStyleSheet("background-color: #4CAF50; border-radius: 5px;");
 }
 
@@ -261,18 +259,20 @@ void MainWindow::openCropDialog(const QImage &image, const MeshNode &node,
                                  const QList<quint16> &multicastTargets)
 {
     auto *dlg = new CropImageDialog(image, node, multicastTargets.size(), this);
+    ImagePreviewDialog::TransportMode transport = m_currentTransport;
     connect(dlg, &CropImageDialog::cropConfirmed, this,
-            [this, node, multicastTargets](const QImage &cropped, const ImageResolution &res) {
-        openPreviewDialog(cropped, res, node, multicastTargets);
+            [this, node, multicastTargets, transport](const QImage &cropped, const ImageResolution &res) {
+        openPreviewDialog(cropped, res, node, multicastTargets, transport);
     });
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->open();
 }
 
 void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution &res,
-                                    const MeshNode &node, const QList<quint16> &multicastTargets)
+                                    const MeshNode &node, const QList<quint16> &multicastTargets,
+                                    ImagePreviewDialog::TransportMode transport)
 {
-    auto *dlg = new ImagePreviewDialog(cropped, res, node, multicastTargets, this);
+    auto *dlg = new ImagePreviewDialog(cropped, res, node, multicastTargets, transport, this);
     connect(dlg, &ImagePreviewDialog::sendRequested, this,
             [this, node, multicastTargets](const QByteArray &imageData, int w, int h,
                                            BleManager::ImageSendMode mode, quint8 imageMode,

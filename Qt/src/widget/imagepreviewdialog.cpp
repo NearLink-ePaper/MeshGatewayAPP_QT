@@ -13,12 +13,14 @@ ImagePreviewDialog::ImagePreviewDialog(const QImage &croppedBitmap,
                                         const ImageResolution &resolution,
                                         const MeshNode &node,
                                         const QList<quint16> &multicastTargets,
+                                        TransportMode transport,
                                         QWidget *parent)
     : QDialog(parent)
     , m_node(node)
     , m_multicastTargets(multicastTargets)
     , m_croppedBitmap(croppedBitmap)
     , m_resolution(resolution)
+    , m_transport(transport)
 {
     m_processed = ImageUtils::processFromCropped(croppedBitmap, resolution.width, resolution.height);
     buildUI();
@@ -152,54 +154,57 @@ void ImagePreviewDialog::buildUI()
         layout->addWidget(modeCard);
     }
 
-    // ── 发送按钮 ──────────────────────────────────────────
-    // BLE 发送
-    QString bleText = m_multicastTargets.isEmpty()
-        ? tr("Send via BLE  (%1)").arg(sizeLabel)
-        : tr("Multicast via BLE  (%1)  ▶").arg(sizeLabel);
-    QString bleColor = m_multicastTargets.isEmpty()
-        ? QStringLiteral("#4FC3F7") : QStringLiteral("#AB47BC");
+    // ── 发送按钮（只显示扫描时选定的传输方式）──────────────
+    if (m_transport == WifiTransport) {
+        // WiFi 发送
+        auto *wifiBtn = new AAButton(tr("Send via WiFi  (%1)").arg(sizeLabel), this);
+        wifiBtn->setMinimumHeight(dp(52));
+        wifiBtn->setStyleSheet(QStringLiteral(
+            "AAButton { background: rgba(76,175,80,0.18); color: #4CAF50; font-weight: 600; "
+            "border-radius: %1px; font-size: %2px; }"
+            "AAButton:hover { background: rgba(76,175,80,0.35); }")
+            .arg(dp(10)).arg(dp(14)));
+        connect(wifiBtn, &QPushButton::clicked, this, [this]() {
+            int sendW = m_resolution.width, sendH = m_resolution.height;
+            if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
+                sendW = m_resolution.height; sendH = m_resolution.width;
+            }
+            emit wifiSendRequested(m_processed.imageData, sendW, sendH,
+                                   m_processed.imageMode, m_processed.previewBitmap);
+            accept();
+        });
+        layout->addWidget(wifiBtn);
+    } else {
+        // BLE 发送
+        QString bleText = m_multicastTargets.isEmpty()
+            ? tr("Send via BLE  (%1)").arg(sizeLabel)
+            : tr("Multicast via BLE  (%1)  ▶").arg(sizeLabel);
+        QString bleRgb = m_multicastTargets.isEmpty()
+            ? QStringLiteral("79,195,247") : QStringLiteral("171,71,188");
+        QString bleColor = m_multicastTargets.isEmpty()
+            ? QStringLiteral("#4FC3F7") : QStringLiteral("#AB47BC");
 
-    auto *sendBtn = new AAButton(bleText, this);
-    sendBtn->setMinimumHeight(dp(52));
-    sendBtn->setStyleSheet(QStringLiteral(
-        "AAButton { background: rgba(%1, 0.18); color: %2; font-weight: 600; "
-        "border-radius: %3px; font-size: %4px; }"
-        "AAButton:hover { background: rgba(%1, 0.35); }")
-        .arg(m_multicastTargets.isEmpty() ? "79,195,247" : "171,71,188")
-        .arg(bleColor).arg(dp(10)).arg(dp(14)));
-    connect(sendBtn, &QPushButton::clicked, this, [this]() {
-        BleManager::ImageSendMode mode = BleManager::FastMode;
-        if (m_modeCombo && m_modeCombo->currentIndex() == 1)
-            mode = BleManager::AckMode;
-        int sendW = m_resolution.width, sendH = m_resolution.height;
-        if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
-            sendW = m_resolution.height; sendH = m_resolution.width;
-        }
-        emit sendRequested(m_processed.imageData, sendW, sendH,
-                           mode, m_processed.imageMode, m_processed.previewBitmap);
-        accept();
-    });
-    layout->addWidget(sendBtn);
-
-    // WiFi 发送
-    auto *wifiBtn = new AAButton(tr("Send via WiFi  (%1)").arg(sizeLabel), this);
-    wifiBtn->setMinimumHeight(dp(44));
-    wifiBtn->setStyleSheet(QStringLiteral(
-        "AAButton { background: rgba(76,175,80,0.15); color: #4CAF50; font-weight: 600; "
-        "border-radius: %1px; font-size: %2px; }"
-        "AAButton:hover { background: rgba(76,175,80,0.30); }")
-        .arg(dp(10)).arg(dp(13)));
-    connect(wifiBtn, &QPushButton::clicked, this, [this]() {
-        int sendW = m_resolution.width, sendH = m_resolution.height;
-        if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
-            sendW = m_resolution.height; sendH = m_resolution.width;
-        }
-        emit wifiSendRequested(m_processed.imageData, sendW, sendH,
-                               m_processed.imageMode, m_processed.previewBitmap);
-        accept();
-    });
-    layout->addWidget(wifiBtn);
+        auto *sendBtn = new AAButton(bleText, this);
+        sendBtn->setMinimumHeight(dp(52));
+        sendBtn->setStyleSheet(QStringLiteral(
+            "AAButton { background: rgba(%1, 0.18); color: %2; font-weight: 600; "
+            "border-radius: %3px; font-size: %4px; }"
+            "AAButton:hover { background: rgba(%1, 0.35); }")
+            .arg(bleRgb).arg(bleColor).arg(dp(10)).arg(dp(14)));
+        connect(sendBtn, &QPushButton::clicked, this, [this]() {
+            BleManager::ImageSendMode mode = BleManager::FastMode;
+            if (m_modeCombo && m_modeCombo->currentIndex() == 1)
+                mode = BleManager::AckMode;
+            int sendW = m_resolution.width, sendH = m_resolution.height;
+            if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
+                sendW = m_resolution.height; sendH = m_resolution.width;
+            }
+            emit sendRequested(m_processed.imageData, sendW, sendH,
+                               mode, m_processed.imageMode, m_processed.previewBitmap);
+            accept();
+        });
+        layout->addWidget(sendBtn);
+    }
 
     // 取消
     auto *cancelBtn = new AAButton(tr("Cancel"), this);
