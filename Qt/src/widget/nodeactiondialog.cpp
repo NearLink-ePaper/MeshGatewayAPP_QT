@@ -24,33 +24,38 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
 
     // ── 节点信息卡片 ──────────────────────────────────
     auto *infoCard = new AAWidget(this);
-    infoCard->setObjectName("nodeCard");
+    infoCard->setObjectName("debugCard");  // 用 debugCard 而非 nodeCard，避免高度被样式拉伸
     auto *infoLayout = new QHBoxLayout(infoCard);
-    infoLayout->setContentsMargins(dp(14), dp(12), dp(14), dp(12));
-    infoLayout->setSpacing(dp(12));
+    infoLayout->setContentsMargins(dp(14), dp(10), dp(14), dp(10));
+    infoLayout->setSpacing(dp(10));
+    infoLayout->setAlignment(Qt::AlignVCenter);
 
     auto *addrLabel = new QLabel(
         QStringLiteral("0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper(), infoCard);
     addrLabel->setStyleSheet(QStringLiteral(
         "color: #E6EDF3; font-size: %1px; font-weight: 600;").arg(dp(15)));
+    addrLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     QString hopsText;
     QString hopsColor;
     switch (node.hops) {
-    case 0:  hopsText = tr("Gateway");  hopsColor = "#58A6FF"; break;
-    case 1:  hopsText = tr("Direct");   hopsColor = "#3FB950"; break;
-    default: hopsText = tr("%1 hops").arg(node.hops); hopsColor = "#D29922"; break;
+    case 0:  hopsText = tr("网关");   hopsColor = "#58A6FF"; break;
+    case 1:  hopsText = tr("直连");   hopsColor = "#3FB950"; break;
+    default: hopsText = tr("%1跳").arg(node.hops); hopsColor = "#D29922"; break;
     }
     auto *hopsLabel = new QLabel(hopsText, infoCard);
+    hopsLabel->setAlignment(Qt::AlignCenter);
+    hopsLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    hopsLabel->setFixedHeight(dp(24));
+    hopsLabel->setContentsMargins(dp(8), 0, dp(8), 0);
     hopsLabel->setStyleSheet(QStringLiteral(
         "color: %1; font-size: %2px; font-weight: 600; "
-        "background: %3; border-radius: %4px; padding: %5px %6px;")
-        .arg(hopsColor).arg(dp(11))
-        .arg(QColor(hopsColor).name() + QStringLiteral("22"))
-        .arg(dp(4)).arg(dp(3)).arg(dp(8)));
+        "background: rgba(0,0,0,0.25); border: 1px solid %1; "
+        "border-radius: %3px; padding: 0px %4px;")
+        .arg(hopsColor).arg(dp(11)).arg(dp(4)).arg(dp(6)));
 
-    infoLayout->addWidget(addrLabel, 1);
-    infoLayout->addWidget(hopsLabel, 0);
+    infoLayout->addWidget(addrLabel, 1, Qt::AlignVCenter);
+    infoLayout->addWidget(hopsLabel, 0, Qt::AlignVCenter);
     layout->addWidget(infoCard);
 
     // ── 上次发送图片预览 ──────────────────────────────
@@ -61,7 +66,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         prevLayout->setContentsMargins(dp(10), dp(8), dp(10), dp(8));
         prevLayout->setSpacing(dp(6));
 
-        auto *prevTitle = new QLabel(tr("Last Sent Image"), prevCard);
+        auto *prevTitle = new QLabel(tr("上次发送"), prevCard);
         prevTitle->setStyleSheet(QStringLiteral(
             "color: #888; font-size: %1px;").arg(dp(11)));
 
@@ -80,7 +85,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     }
 
     // ── 操作按钮（垂直排列，移动端友好）──────────────
-    auto *imgBtn = new AAButton(tr("Send Image  ▶"), this);
+    auto *imgBtn = new AAButton(tr("发送图片  ▶"), this);
     imgBtn->setMinimumHeight(dp(52));
     imgBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: rgba(88,166,255,0.15); color: #58A6FF; "
@@ -93,7 +98,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     });
     layout->addWidget(imgBtn);
 
-    auto *textBtn = new AAButton(tr("Send Text"), this);
+    auto *textBtn = new AAButton(tr("发送文本"), this);
     textBtn->setMinimumHeight(dp(44));
     textBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: rgba(63,185,80,0.12); color: #3FB950; "
@@ -106,7 +111,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     });
     layout->addWidget(textBtn);
 
-    auto *cancelBtn = new AAButton(tr("Cancel"), this);
+    auto *cancelBtn = new AAButton(tr("取消"), this);
     cancelBtn->setMinimumHeight(dp(36));
     cancelBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: transparent; color: #555; "

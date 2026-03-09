@@ -31,9 +31,9 @@ void ImagePreviewDialog::buildUI()
     // ── 标题 ──────────────────────────────────────────────
     QString title;
     if (!m_multicastTargets.isEmpty())
-        title = tr("Preview — Multicast %1 nodes").arg(m_multicastTargets.size());
+        title = tr("预览 — 组播 %1 节点").arg(m_multicastTargets.size());
     else
-        title = tr("Preview — 0x%1").arg(m_node.addr, 4, 16, QChar('0')).toUpper();
+        title = tr("预览 — 0x%1").arg(m_node.addr, 4, 16, QChar('0')).toUpper();
     setWindowTitle(title);
 
     int screenW = 420;
@@ -89,7 +89,7 @@ void ImagePreviewDialog::buildUI()
     // 原图列
     auto *origCol = new QVBoxLayout;
     origCol->setSpacing(dp(4));
-    auto *origTitle = new QLabel(tr("Original"), previewCard);
+    auto *origTitle = new QLabel(tr("原图"), previewCard);
     origTitle->setStyleSheet(QStringLiteral("color: #666; font-size: %1px;").arg(dp(10)));
     origTitle->setAlignment(Qt::AlignCenter);
     auto *origImgLabel = new QLabel(previewCard);
@@ -114,7 +114,7 @@ void ImagePreviewDialog::buildUI()
     // 墨水屏预览列
     auto *epdCol = new QVBoxLayout;
     epdCol->setSpacing(dp(4));
-    auto *epdTitle = new QLabel(tr("E-Paper"), previewCard);
+    auto *epdTitle = new QLabel(tr("墨水屏效果"), previewCard);
     epdTitle->setStyleSheet(QStringLiteral("color: #666; font-size: %1px;").arg(dp(10)));
     epdTitle->setAlignment(Qt::AlignCenter);
     auto *epdImgLabel = new QLabel(previewCard);
@@ -138,18 +138,18 @@ void ImagePreviewDialog::buildUI()
         modeLayout->setContentsMargins(dp(12), dp(8), dp(12), dp(8));
         modeLayout->setSpacing(dp(6));
 
-        auto *modeTitleLabel = new QLabel(tr("Mode"), modeCard);
+        auto *modeTitleLabel = new QLabel(tr("传输模式"), modeCard);
         modeTitleLabel->setStyleSheet(QStringLiteral(
             "color: #888; font-size: %1px;").arg(dp(12)));
         modeLayout->addWidget(modeTitleLabel);
         modeLayout->addStretch();
 
         m_modeCombo = new QComboBox(modeCard);
-        m_modeCombo->addItem(tr("FAST"));
-        m_modeCombo->addItem(tr("ACK"));
+        m_modeCombo->addItem(tr("快速模式"));
+        m_modeCombo->addItem(tr("确认模式"));
         m_modeCombo->setCurrentIndex(0);
         m_modeCombo->setMinimumHeight(dp(32));
-        m_modeCombo->setToolTip(tr("FAST: gateway flow control\nACK: per-packet confirm"));
+        m_modeCombo->setToolTip(tr("快速：网关流控\n确认：逐包应答"));
         modeLayout->addWidget(m_modeCombo);
         layout->addWidget(modeCard);
     }
@@ -157,7 +157,7 @@ void ImagePreviewDialog::buildUI()
     // ── 发送按钮（只显示扫描时选定的传输方式）──────────────
     if (m_transport == WifiTransport) {
         // WiFi 发送
-        auto *wifiBtn = new AAButton(tr("Send via WiFi  (%1)").arg(sizeLabel), this);
+        auto *wifiBtn = new AAButton(tr("WiFi 发送 (%1)").arg(sizeLabel), this);
         wifiBtn->setMinimumHeight(dp(52));
         wifiBtn->setStyleSheet(QStringLiteral(
             "AAButton { background: rgba(76,175,80,0.18); color: #4CAF50; font-weight: 600; "
@@ -177,8 +177,8 @@ void ImagePreviewDialog::buildUI()
     } else {
         // BLE 发送
         QString bleText = m_multicastTargets.isEmpty()
-            ? tr("Send via BLE  (%1)").arg(sizeLabel)
-            : tr("Multicast via BLE  (%1)  ▶").arg(sizeLabel);
+            ? tr("BLE 发送 (%1)").arg(sizeLabel)
+            : tr("BLE 组播 (%1)  ▶").arg(sizeLabel);
         QString bleRgb = m_multicastTargets.isEmpty()
             ? QStringLiteral("79,195,247") : QStringLiteral("171,71,188");
         QString bleColor = m_multicastTargets.isEmpty()
@@ -207,7 +207,7 @@ void ImagePreviewDialog::buildUI()
     }
 
     // 取消
-    auto *cancelBtn = new AAButton(tr("Cancel"), this);
+    auto *cancelBtn = new AAButton(tr("取消"), this);
     cancelBtn->setMinimumHeight(dp(36));
     cancelBtn->setStyleSheet(QStringLiteral(
         "AAButton { background: transparent; color: #484F58; "
