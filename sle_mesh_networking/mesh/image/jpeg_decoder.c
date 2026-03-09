@@ -186,8 +186,15 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
                         uint16_t *out_width, uint16_t *out_height)
 {
     JDEC jdec;
+    JRESULT rc;
     uint8_t *pool = NULL;
     bool result = false;
+    uint16_t w = 0, h = 0;
+    uint32_t rgb_size = 0;
+    mem_stream_t stream;
+    decode_ctx_t ctx;
+    uint32_t err_row_size = 0;
+    uint16_t y;
 
     /* 分配 TJpgDec 工作池 */
     pool = (uint8_t *)osal_vmalloc(TJPGD_POOL_SIZE);
@@ -197,17 +204,19 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
     }
 
     /* 准备内存流 */
-    mem_stream_t stream = { .data = jpeg_data, .size = jpeg_size, .pos = 0 };
+    stream.data = jpeg_data;
+    stream.size = jpeg_size;
+    stream.pos  = 0;
 
     /* 解析 JPEG 头 */
-    JRESULT rc = jd_prepare(&jdec, jpeg_input_func, pool, TJPGD_POOL_SIZE, &stream);
+    rc = jd_prepare(&jdec, jpeg_input_func, pool, TJPGD_POOL_SIZE, &stream);
     if (rc != JDR_OK) {
         osal_printk("%s jd_prepare failed: %d\r\n", JPEG_LOG, rc);
         goto cleanup;
     }
 
-    uint16_t w = (uint16_t)jdec.width;
-    uint16_t h = (uint16_t)jdec.height;
+    w = (uint16_t)jdec.width;
+    h = (uint16_t)jdec.height;
     osal_printk("%s JPEG: %dx%d, %d bytes\r\n", JPEG_LOG, w, h, jpeg_size);
 
     if ((uint32_t)(w / 2) * h > out_cap) {
@@ -217,7 +226,7 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
     }
 
     /* 分配全帧 RGB888 缓冲区 */
-    uint32_t rgb_size = (uint32_t)w * h * 3;
+    rgb_size = (uint32_t)w * h * 3;
     s_rgb_buf = (uint8_t *)osal_vmalloc(rgb_size);
     if (!s_rgb_buf) {
         osal_printk("%s RGB buf alloc failed (%lu)\r\n", JPEG_LOG, (unsigned long)rgb_size);
@@ -236,37 +245,36 @@ bool jpeg_decode_to_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
     osal_printk("%s decode OK, starting dither\r\n", JPEG_LOG);
 
     /* Floyd-Steinberg 抖动: 逐行处理 */
-    {
-        decode_ctx_t ctx;
-        ctx.out_4bpp = out_4bpp;
-        ctx.out_cap  = out_cap;
-        ctx.img_w    = w;
-        ctx.img_h    = h;
-        ctx.ok       = true;
+    ctx.out_4bpp = out_4bpp;
+    ctx.out_cap  = out_cap;
+    ctx.img_w    = w;
+    ctx.img_h    = h;
+    ctx.ok       = true;
+    ctx.err_cur  = NULL;
+    ctx.err_nxt  = NULL;
 
-        /* 误差缓冲区: 2 行 */
-        uint32_t err_row_size = (uint32_t)w * 3 * sizeof(int16_t);
-        ctx.err_cur = (int16_t *)osal_vmalloc(err_row_size);
-        ctx.err_nxt = (int16_t *)osal_vmalloc(err_row_size);
-        if (!ctx.err_cur || !ctx.err_nxt) {
-            osal_printk("%s err buf alloc failed\r\n", JPEG_LOG);
-            if (ctx.err_cur) osal_vfree(ctx.err_cur);
-            if (ctx.err_nxt) osal_vfree(ctx.err_nxt);
-            goto cleanup;
-        }
-        (void)memset_s(ctx.err_cur, err_row_size, 0, err_row_size);
-        (void)memset_s(ctx.err_nxt, err_row_size, 0, err_row_size);
-
-        /* 清零输出 */
-        (void)memset_s(out_4bpp, out_cap, 0x11, (uint32_t)(w/2)*h);  /* 0x11 = White|White */
-
-        for (uint16_t y = 0; y < h; y++) {
-            dither_row(&ctx, &s_rgb_buf[(uint32_t)y * w * 3], y);
-        }
-
-        osal_vfree(ctx.err_cur);
-        osal_vfree(ctx.err_nxt);
+    /* 误差缓冲区: 2 行 */
+    err_row_size = (uint32_t)w * 3 * sizeof(int16_t);
+    ctx.err_cur = (int16_t *)osal_vmalloc(err_row_size);
+    ctx.err_nxt = (int16_t *)osal_vmalloc(err_row_size);
+    if (!ctx.err_cur || !ctx.err_nxt) {
+        osal_printk("%s err buf alloc failed\r\n", JPEG_LOG);
+        if (ctx.err_cur) osal_vfree(ctx.err_cur);
+        if (ctx.err_nxt) osal_vfree(ctx.err_nxt);
+        goto cleanup;
     }
+    (void)memset_s(ctx.err_cur, err_row_size, 0, err_row_size);
+    (void)memset_s(ctx.err_nxt, err_row_size, 0, err_row_size);
+
+    /* 清零输出 */
+    (void)memset_s(out_4bpp, out_cap, 0x11, (uint32_t)(w/2)*h);  /* 0x11 = White|White */
+
+    for (y = 0; y < h; y++) {
+        dither_row(&ctx, &s_rgb_buf[(uint32_t)y * w * 3], y);
+    }
+
+    osal_vfree(ctx.err_cur);
+    osal_vfree(ctx.err_nxt);
 
     *out_width  = w;
     *out_height = h;
