@@ -22,12 +22,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ─── Qt 依赖 ────────────────────────────────────────
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Bluetooth)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Bluetooth Network)
 
 # ─── 头文件搜索路径 ──────────────────────────────────────
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/core
     ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/ble
+    ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/net
     ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/widget
     ${CMAKE_CURRENT_SOURCE_DIR}/Qt/header/utils
 )
@@ -69,6 +70,7 @@ set(SHARED_HEADERS
     Qt/header/widget/nodeactiondialog.h
     Qt/header/widget/cropimagedialog.h
     Qt/header/widget/imagepreviewdialog.h
+    Qt/header/net/sockettransport.h
     Qt/header/utils/stylemanager.h
 )
 
@@ -85,6 +87,7 @@ set(SHARED_SOURCES
     Qt/src/widget/nodeactiondialog.cpp
     Qt/src/widget/cropimagedialog.cpp
     Qt/src/widget/imagepreviewdialog.cpp
+    Qt/src/net/sockettransport.cpp
     Qt/src/utils/stylemanager.cpp
 )
 
@@ -161,6 +164,7 @@ endif()
 target_link_libraries(NearLink_Mesh PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Bluetooth
+    Qt${QT_VERSION_MAJOR}::Network
 )
 
 # ─── 版本宏注入 C++ ──────────────────────────────────────

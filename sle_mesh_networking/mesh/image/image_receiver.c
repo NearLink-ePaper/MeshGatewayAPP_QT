@@ -790,6 +790,11 @@ const uint8_t *image_receiver_get_buffer(void)
     return s_img_buf;
 }
 
+uint8_t *image_receiver_get_buffer_writable(void)
+{
+    return s_img_buf;
+}
+
 /**
  * @brief  强制重置接收模块至 IDLE 状态
  * @note   清除接收进度和 RESULT 重发计数器。

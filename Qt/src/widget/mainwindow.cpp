@@ -19,6 +19,9 @@ MainWindow::MainWindow(QWidget *parent)
     // 创建 BLE 管理器
     m_ble = new BleManager(this);
 
+    // 创建 WiFi Socket 传输
+    m_wifi = new SocketTransport(this);
+
     // 中心 widget
     auto *central = new QWidget(this);
     central->setObjectName("centralWidget");
@@ -54,6 +57,12 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 图片传输完成后自动刷新拓扑
     connect(m_ble, &BleManager::imageSendStateChanged, this, &MainWindow::onImageSendDone);
+
+    // WiFi 传输结果日志
+    connect(m_wifi, &SocketTransport::finished, this, [this](bool ok, const QString &msg) {
+        m_connectedPage->addLog(ok ? tr("📶 WiFi: %1").arg(msg)
+                                   : tr("📶 WiFi failed: %1").arg(msg));
+    });
 
     // 加载持久化的节点图片
     m_nodeImages = NodeImageStore::loadAll();
@@ -263,6 +272,27 @@ void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution 
             NodeImageStore::save(node.addr, previewBitmap);
         }
     });
+
+    // WiFi 直传
+    connect(dlg, &ImagePreviewDialog::wifiSendRequested, this,
+            [this, node, multicastTargets](const QByteArray &imageData, int w, int h,
+                                           quint8 imageMode, const QImage &previewBitmap) {
+        m_connectedPage->addLog(tr("📶 WiFi sending %1×%2 (%3 B)...")
+                                    .arg(w).arg(h).arg(imageData.size()));
+        m_wifi->sendImage(imageData, w, h, imageMode);
+
+        // 保存节点图片
+        if (!multicastTargets.isEmpty()) {
+            for (quint16 addr : multicastTargets) {
+                m_nodeImages[addr] = previewBitmap;
+                NodeImageStore::save(addr, previewBitmap);
+            }
+        } else {
+            m_nodeImages[node.addr] = previewBitmap;
+            NodeImageStore::save(node.addr, previewBitmap);
+        }
+    });
+
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->open();
 }

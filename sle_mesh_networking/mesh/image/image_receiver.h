@@ -189,6 +189,13 @@ const img_rx_info_t *image_receiver_get_info(void);
 const uint8_t *image_receiver_get_buffer(void);
 
 /**
+ * @brief  获取图片接收缓冲区（可写，供 WiFi Socket 直接写入）
+ * @return 指向 s_img_buf[IMG_RX_BUF_SIZE] 的可写指针
+ * @note   调用方需确保 state != IMG_STATE_RECEIVING 避免冲突
+ */
+uint8_t *image_receiver_get_buffer_writable(void);
+
+/**
  * @brief  强制重置接收模块至 IDLE 状态
  * @note   清除进度并停止 RESULT 重发，可在刷屏完成后调用以准备下次传输。
  */

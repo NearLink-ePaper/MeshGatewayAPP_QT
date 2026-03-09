@@ -99,6 +99,10 @@
 /* (e) ePaper 显示（仅在同时启用墨水屏样例时编译） */
 #include "epaper.h"
 
+/* (f) WiFi SoftAP + Socket 图传 */
+#include "wifi_softap.h"
+#include "wifi_socket_server.h"
+
 /* ===================================================================
  *  Section 2: 外部函数声明
  *
@@ -764,7 +768,15 @@ static void *mesh_main_task(const char *arg)
         osal_printk("%s UART callback register failed: 0x%x\r\n", MESH_LOG_TAG, ret);
     }
 
-    /* ---- 5. 进入活跃状态 ---- */
+    /* ---- 5. WiFi SoftAP + Socket 图传服务器 ---- */
+    osal_printk("%s starting WiFi SoftAP...\r\n", MESH_LOG_TAG);
+    if (wifi_softap_start() == 0) {
+        wifi_socket_server_start();
+    } else {
+        osal_printk("%s WiFi SoftAP failed, socket server skipped\r\n", MESH_LOG_TAG);
+    }
+
+    /* ---- 6. 进入活跃状态 ---- */
     g_node_state = MESH_NODE_STATE_ACTIVE;
     osal_printk("%s ===== Mesh node 0x%04X ACTIVE =====\r\n",
                 MESH_LOG_TAG, g_mesh_node_addr);

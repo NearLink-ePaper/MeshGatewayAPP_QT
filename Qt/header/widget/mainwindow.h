@@ -16,6 +16,7 @@
 #include "cropimagedialog.h"
 #include "imagepreviewdialog.h"
 #include "nodeimagestore.h"
+#include "sockettransport.h"
 
 /**
  * 主窗口 — 管理扫描页/连接中/已连接页面切换
@@ -46,7 +47,8 @@ private:
     void openPreviewDialog(const QImage &cropped, const ImageResolution &res,
                            const MeshNode &node, const QList<quint16> &multicastTargets);
 
-    BleManager      *m_ble;
+    BleManager       *m_ble;
+    SocketTransport  *m_wifi;
     QStackedWidget  *m_stack;
     ScanPage        *m_scanPage;
     ConnectedPage   *m_connectedPage;

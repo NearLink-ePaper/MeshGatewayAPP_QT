@@ -155,5 +155,26 @@ void ImagePreviewDialog::buildUI()
         accept();
     });
     btnRow->addWidget(sendBtn);
+
+    /* WiFi 直传按钮 */
+    auto *wifiBtn = new AAButton(tr("WiFi Send (%1)").arg(sizeLabel));
+    wifiBtn->setStyleSheet(QStringLiteral(
+        "AAButton { background: #4CAF50; color: white; font-weight: bold; "
+        "border-radius: %1px; padding: %2px %3px; font-size: %4px; }"
+        "AAButton:hover { background: #388E3C; }")
+        .arg(dp(6)).arg(dp(8)).arg(dp(16)).arg(dp(13)));
+    connect(wifiBtn, &QPushButton::clicked, this, [this]() {
+        int sendW = m_resolution.width;
+        int sendH = m_resolution.height;
+        if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
+            sendW = m_resolution.height;
+            sendH = m_resolution.width;
+        }
+        emit wifiSendRequested(m_processed.imageData, sendW, sendH,
+                               m_processed.imageMode, m_processed.previewBitmap);
+        accept();
+    });
+    btnRow->addWidget(wifiBtn);
+
     layout->addLayout(btnRow);
 }

@@ -31,6 +31,8 @@ signals:
     void sendRequested(const QByteArray &imageData, int width, int height,
                        BleManager::ImageSendMode mode, quint8 imageMode,
                        const QImage &previewBitmap);
+    void wifiSendRequested(const QByteArray &imageData, int width, int height,
+                           quint8 imageMode, const QImage &previewBitmap);
 
 private:
     void buildUI();
