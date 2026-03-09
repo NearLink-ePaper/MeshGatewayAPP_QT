@@ -127,6 +127,7 @@ public:
     /* ── 取模模式 ── */
     static constexpr quint8 IMG_MODE_H_LSB = 0x00;
     static constexpr quint8 IMG_MODE_RLE   = 0x01;
+    static constexpr quint8 IMG_MODE_JPEG  = 0x02;
 
     /* ── 传输模式 ── */
     static constexpr quint8 IMG_XFER_FAST = 0x00;

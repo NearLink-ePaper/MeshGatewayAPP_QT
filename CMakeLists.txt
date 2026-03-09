@@ -59,7 +59,6 @@ set(RESOURCE_FILES
 # ─── 共享源文件 (跨平台) ──────────────────────────────────
 set(SHARED_HEADERS
     Qt/header/core/meshprotocol.h
-    Qt/header/core/imagerleencoder.h
     Qt/header/core/imageutils.h
     Qt/header/core/nodeimagestore.h
     Qt/header/ble/blemanager.h
@@ -76,7 +75,6 @@ set(SHARED_HEADERS
 set(SHARED_SOURCES
     main.cpp
     Qt/src/core/meshprotocol.cpp
-    Qt/src/core/imagerleencoder.cpp
     Qt/src/core/imageutils.cpp
     Qt/src/core/nodeimagestore.cpp
     Qt/src/ble/blemanager.cpp

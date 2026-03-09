@@ -13,7 +13,7 @@ class QPushButton;
 
 /**
  * 图片预览对话框
- * 显示原图与二值化结果的并排对比
+ * 显示原图与 JPEG 压缩结果的并排对比
  * 选择传输模式后发送
  */
 class ImagePreviewDialog : public QDialog

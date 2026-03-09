@@ -37,22 +37,19 @@ void ImagePreviewDialog::buildUI()
 
     // 数据信息
     QString sizeLabel;
-    if (m_processed.isCompressed) {
-        float ratio = (float)m_processed.dataSize / m_processed.rawSize * 100.0f;
-        sizeLabel = QStringLiteral("%1 B → %2 B (RLE %3%)")
-                        .arg(m_processed.rawSize).arg(m_processed.dataSize)
-                        .arg(ratio, 0, 'f', 1);
-    } else {
-        sizeLabel = QStringLiteral("%1 B (RAW)").arg(m_processed.dataSize);
-    }
-    auto *infoLabel = new QLabel(QStringLiteral("%1×%2 | %3 pkts | %4")
+    if (m_processed.dataSize < 1024)
+        sizeLabel = QStringLiteral("%1 B").arg(m_processed.dataSize);
+    else
+        sizeLabel = QStringLiteral("%1 KB").arg(m_processed.dataSize / 1024.0, 0, 'f', 1);
+    auto *infoLabel = new QLabel(QStringLiteral("%1×%2 | JPEG Q%3 | %4 pkts | %5")
                                      .arg(m_resolution.width).arg(m_resolution.height)
+                                     .arg(m_processed.jpegQuality)
                                      .arg(m_processed.packetCount).arg(sizeLabel));
     infoLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(11)));
     infoLabel->setWordWrap(true);
     layout->addWidget(infoLabel);
 
-    // 预览图: 原图 + 二值化并排
+    // 预览图: 原图 + JPEG 压缩后并排
     auto *previewRow = new QHBoxLayout;
     previewRow->setSpacing(dp(8));
 
@@ -84,23 +81,26 @@ void ImagePreviewDialog::buildUI()
     arrowLabel->setAlignment(Qt::AlignCenter);
     previewRow->addWidget(arrowLabel);
 
-    // 二值化
-    auto *bwFrame = new QWidget;
-    auto *bwLayout = new QVBoxLayout(bwFrame);
-    bwLayout->setContentsMargins(0, 0, 0, 0);
-    bwLayout->setSpacing(dp(4));
-    auto *bwTitle = new QLabel(tr("Binary"));
-    bwTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
-    bwTitle->setAlignment(Qt::AlignCenter);
-    bwLayout->addWidget(bwTitle);
-    auto *bwImgLabel = new QLabel;
-    QPixmap bwPix = QPixmap::fromImage(m_processed.previewBitmap);
-    bwPix = bwPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-    bwImgLabel->setPixmap(bwPix);
-    bwImgLabel->setAlignment(Qt::AlignCenter);
-    bwImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px; background: white;").arg(dp(4)));
-    bwLayout->addWidget(bwImgLabel);
-    previewRow->addWidget(bwFrame);
+    // JPEG 压缩后预览
+    auto *jpegFrame = new QWidget;
+    auto *jpegLayout = new QVBoxLayout(jpegFrame);
+    jpegLayout->setContentsMargins(0, 0, 0, 0);
+    jpegLayout->setSpacing(dp(4));
+    auto *jpegTitle = new QLabel(tr("JPEG"));
+    jpegTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
+    jpegTitle->setAlignment(Qt::AlignCenter);
+    jpegLayout->addWidget(jpegTitle);
+    auto *jpegImgLabel = new QLabel;
+    // 解码 JPEG 数据显示实际压缩效果
+    QImage jpegPreview;
+    jpegPreview.loadFromData(m_processed.imageData, "JPEG");
+    QPixmap jpegPix = QPixmap::fromImage(jpegPreview);
+    jpegPix = jpegPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    jpegImgLabel->setPixmap(jpegPix);
+    jpegImgLabel->setAlignment(Qt::AlignCenter);
+    jpegImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px;").arg(dp(4)));
+    jpegLayout->addWidget(jpegImgLabel);
+    previewRow->addWidget(jpegFrame);
 
     layout->addLayout(previewRow);
 
