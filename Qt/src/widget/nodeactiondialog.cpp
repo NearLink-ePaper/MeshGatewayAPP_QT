@@ -69,7 +69,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         int scrH = 700;
         if (auto *scr = QGuiApplication::primaryScreen())
             scrH = scr->availableGeometry().height();
-        int prevSize = qMin({scrW - 80, scrH * 3 / 10, 200});
+        int prevSize = qMin(qMin(scrW - 80, scrH * 3 / 10), 200);
         QPixmap pix = QPixmap::fromImage(lastSentBitmap)
             .scaled(prevSize, prevSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         prevLabel->setPixmap(pix);
