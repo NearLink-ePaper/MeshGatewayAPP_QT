@@ -17,6 +17,7 @@
 #include "blemanager.h"
 #include "meshprotocol.h"
 #include "stylemanager.h"
+#include "sockettransport.h"
 
 class QMouseEvent;
 
@@ -57,6 +58,8 @@ public:
     void addLog(const QString &text);
     QList<quint16> multicastTargets() const;
     void clearMulticastSelection();
+    /** WiFi 模式：设置设备信息并构造一个可点击的 WiFi 节点卡片 */
+    void setWifiMode(const WifiDevice &device);
 
 signals:
     void nodeClicked(const MeshNode &node);

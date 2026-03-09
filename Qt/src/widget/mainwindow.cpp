@@ -170,6 +170,8 @@ void MainWindow::onWifiDeviceSelected(const WifiDevice &device)
     m_currentTransport = ImagePreviewDialog::WifiTransport;
     m_wifi->setHost(device.host, device.port);
 
+    // 填充 ConnectedPage 的设备信息和节点列表
+    m_connectedPage->setWifiMode(device);
     m_connectedPage->addLog(tr("📶 WiFi connected to %1 (%2:%3)")
                                 .arg(device.name).arg(device.host).arg(device.port));
     m_stack->setCurrentIndex(2);

@@ -582,3 +582,22 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
     }
     }
 }
+
+// ─── WiFi 模式 ────────────────────────────────────────────
+
+void ConnectedPage::setWifiMode(const WifiDevice &device)
+{
+    // 设备信息卡片显示 WiFi 设备
+    m_deviceNameLabel->setText(device.name);
+    m_gwAddrLabel->setText(
+        QStringLiteral("%1:%2  [WiFi]").arg(device.host).arg(device.port));
+    m_debugLabel->setText(tr("WiFi 已连接"));
+
+    // WiFi 模式不需要查询 BLE 拓扑
+    m_queryTopoBtn->setVisible(false);
+
+    // 构造一个代表该 WiFi 设备的"节点"（addr=0, hops=0），可点击后发送图片
+    m_nodes.clear();
+    m_nodes.append(MeshNode(0x0000, 0));
+    rebuildNodeList();
+}
