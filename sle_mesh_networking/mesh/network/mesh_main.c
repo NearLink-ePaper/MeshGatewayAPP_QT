@@ -919,7 +919,8 @@ static void *mesh_main_task(const char *arg)
                 epaper_trigger_mesh_image(image_receiver_get_buffer(),
                                           img->width, img->height, img->mode,
                                           img->total_bytes);
-                image_receiver_reset();  /* 重置状态机，准备接收下一张 */
+                /* 注意: 不在此处 reset — ePaper 任务异步解码 JPEG 期间需要缓冲区,
+                 * 由 ePaper 任务在数据传输完成后调用 image_receiver_reset() */
             } else if (img->state != IMG_STATE_DONE) {
                 img_epaper_triggered = false;  /* 新传输开始，清除触发标志 */
             }

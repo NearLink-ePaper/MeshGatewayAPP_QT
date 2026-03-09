@@ -116,9 +116,11 @@ static void *epaper_init_task(const char *arg) {
                     if (!jpeg_decode_stream_epd(buf, (uint32_t)data_size)) {
                         printf("ePaper: JPEG stream decode failed!\r\n");
                     }
+                    image_receiver_reset(); /* 缓冲区数据已发送到 EPD, 可安全复用 */
                     EPD_refresh();
                 } else {
                     EPD_display_1bpp(buf, width, height);
+                    image_receiver_reset(); /* EPD_display_1bpp 内含 refresh, 数据已用完 */
                 }
                 EPD_sleep();
                 printf("ePaper: display done\r\n");
