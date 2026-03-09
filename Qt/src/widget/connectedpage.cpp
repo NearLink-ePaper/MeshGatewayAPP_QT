@@ -2,10 +2,8 @@
 #include "stylemanager.h"
 #include <QDateTime>
 #include <QFrame>
-#include <QGuiApplication>
 #include <QMouseEvent>
 #include <QPalette>
-#include <QScreen>
 #include <QScrollBar>
 
 // ─── NodeCardWidget ─────────────────────────────────────
@@ -178,11 +176,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     m_nodeScroll->setWidgetResizable(true);
     m_nodeScroll->setFrameShape(QFrame::NoFrame);
     m_nodeScroll->setObjectName("nodeScrollArea");
-    // 节点列表高度按屏幕高度 30% 自适应，避免移动端固定像素不合理
-    int screenH = 700;
-    if (auto *screen = QGuiApplication::primaryScreen())
-        screenH = screen->availableGeometry().height();
-    m_nodeScroll->setMaximumHeight(qMax(180, screenH * 4 / 10));
+    m_nodeScroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_nodeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     m_nodeListContainer = new QWidget();

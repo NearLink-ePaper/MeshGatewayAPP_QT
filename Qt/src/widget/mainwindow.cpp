@@ -8,7 +8,6 @@
 #include <QProgressBar>
 #include <QFileDialog>
 #include <QImageReader>
-#include <QStandardPaths>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -235,24 +234,30 @@ void MainWindow::onMulticastImageRequested(const QList<quint16> &targets)
 
 void MainWindow::openImagePicker(const MeshNode &node, const QList<quint16> &multicastTargets)
 {
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    // 移动端：通过系统原生图库选取图片（触发相册，而非文件管理器）
+    QFileDialog::getOpenFileContent(
+        tr("Images (*.jpg *.jpeg *.png *.bmp *.gif *.tif *.tiff *.webp)"),
+        [this, node, multicastTargets](const QString &fileName, const QByteArray &fileContent) {
+            if (fileName.isEmpty() || fileContent.isEmpty()) return;
+            QImage img;
+            if (!img.loadFromData(fileContent)) return;
+            openCropDialog(img, node, multicastTargets);
+        });
+#else
     QStringList filters;
     for (const auto &fmt : QImageReader::supportedImageFormats())
         filters << QStringLiteral("*.%1").arg(QString::fromLatin1(fmt));
     QString filter = tr("Images (%1)").arg(filters.join(' '));
 
-    // 移动端从相册目录启动，桌面端从上次目录启动
-#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
-    QString startDir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
-#else
-    QString startDir = QString();
-#endif
-    QString path = QFileDialog::getOpenFileName(this, tr("Select Image"), startDir, filter);
+    QString path = QFileDialog::getOpenFileName(this, tr("Select Image"), QString(), filter);
     if (path.isEmpty()) return;
 
     QImage img(path);
     if (img.isNull()) return;
 
     openCropDialog(img, node, multicastTargets);
+#endif
 }
 
 void MainWindow::openCropDialog(const QImage &image, const MeshNode &node,

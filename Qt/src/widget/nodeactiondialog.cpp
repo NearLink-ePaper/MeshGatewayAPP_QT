@@ -66,7 +66,10 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
             "color: #888; font-size: %1px;").arg(dp(11)));
 
         auto *prevLabel = new QLabel(prevCard);
-        int prevSize = qMin(scrW - 80, 200);
+        int scrH = 700;
+        if (auto *scr = QGuiApplication::primaryScreen())
+            scrH = scr->availableGeometry().height();
+        int prevSize = qMin({scrW - 80, scrH * 3 / 10, 200});
         QPixmap pix = QPixmap::fromImage(lastSentBitmap)
             .scaled(prevSize, prevSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         prevLabel->setPixmap(pix);
