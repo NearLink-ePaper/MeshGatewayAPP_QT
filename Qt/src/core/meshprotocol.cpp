@@ -1,4 +1,5 @@
 #include "meshprotocol.h"
+#include <QObject>
 
 QByteArray MeshProtocol::buildUnicast(quint16 dstAddr, const QByteArray &data)
 {
