@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <QByteArray>
 #include <QTimer>
+#include <QString>
 
 /**
  * WiFi Socket 图传客户端
@@ -15,6 +16,13 @@
  *   [Data N bytes] 图片原始数据
  *   设备回复: 1 byte (0=OK, 1=OOM, 2=fail)
  */
+/** WiFi 发现的设备信息 */
+struct WifiDevice {
+    QString name;   // 显示名称，例如 "NearLink_EPaper"
+    QString host;   // IP 地址
+    quint16 port;   // TCP 端口
+};
+
 class SocketTransport : public QObject
 {
     Q_OBJECT
@@ -39,10 +47,23 @@ public:
     /** 取消当前传输 */
     void cancel();
 
+    /**
+     * 异步探测 WiFi 设备是否在线
+     * 向 host:port 发起 TCP 连接，成功则 emit wifiDeviceFound
+     */
+    void startProbe(const QString &host = QStringLiteral("192.168.43.1"),
+                    quint16 port = 8080,
+                    const QString &name = QStringLiteral("NearLink_EPaper"));
+    void stopProbe();
+
 signals:
     void stateChanged(SocketTransport::State state);
     void progressChanged(int bytesSent, int totalBytes);
     void finished(bool success, const QString &message);
+    /** 探测到 WiFi 设备在线 */
+    void wifiDeviceFound(const WifiDevice &device);
+    /** 探测完成（无论是否找到） */
+    void probeFinished();
 
 private slots:
     void onConnected();
@@ -50,6 +71,9 @@ private slots:
     void onReadyRead();
     void onError(QAbstractSocket::SocketError err);
     void onTimeout();
+    void onProbeConnected();
+    void onProbeError();
+    void onProbeTimeout();
 
 private:
     void setState(State s);
@@ -64,6 +88,11 @@ private:
     QByteArray  m_sendBuf;
     int         m_totalBytes = 0;
     int         m_sentBytes = 0;
+
+    // 探测相关
+    QTcpSocket *m_probeSocket = nullptr;
+    QTimer      m_probeTimeout;
+    WifiDevice  m_probeDevice;
 };
 
 #endif // SOCKETTRANSPORT_H

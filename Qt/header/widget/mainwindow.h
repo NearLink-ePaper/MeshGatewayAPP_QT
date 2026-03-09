@@ -32,6 +32,7 @@ public:
 private slots:
     void onConnStateChanged(BleManager::ConnState state);
     void onDeviceSelected(int index);
+    void onWifiDeviceSelected(const WifiDevice &device);
     void onNodeClicked(const MeshNode &node);
     void onSendTextToNode(const MeshNode &node);
     void onSendImageToNode(const MeshNode &node);

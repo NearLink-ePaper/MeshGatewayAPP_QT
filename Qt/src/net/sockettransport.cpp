@@ -162,3 +162,62 @@ void SocketTransport::cleanup()
     }
     m_sendBuf.clear();
 }
+
+// ─── WiFi 探测 ────────────────────────────────────────────
+
+void SocketTransport::startProbe(const QString &host, quint16 port, const QString &name)
+{
+    stopProbe();
+
+    m_probeDevice = { name, host, port };
+
+    m_probeSocket = new QTcpSocket(this);
+    connect(m_probeSocket, &QTcpSocket::connected,
+            this, &SocketTransport::onProbeConnected);
+    connect(m_probeSocket, &QTcpSocket::errorOccurred,
+            this, &SocketTransport::onProbeError);
+
+    m_probeTimeout.setSingleShot(true);
+    m_probeTimeout.setInterval(3000);
+    connect(&m_probeTimeout, &QTimer::timeout,
+            this, &SocketTransport::onProbeTimeout, Qt::UniqueConnection);
+
+    m_probeTimeout.start();
+    m_probeSocket->connectToHost(host, port);
+    qDebug() << "[WiFi probe] connecting to" << host << ":" << port;
+}
+
+void SocketTransport::stopProbe()
+{
+    m_probeTimeout.stop();
+    if (m_probeSocket) {
+        m_probeSocket->disconnect(this);
+        m_probeSocket->abort();
+        m_probeSocket->deleteLater();
+        m_probeSocket = nullptr;
+    }
+}
+
+void SocketTransport::onProbeConnected()
+{
+    qDebug() << "[WiFi probe] found device:" << m_probeDevice.host;
+    m_probeTimeout.stop();
+    emit wifiDeviceFound(m_probeDevice);
+    emit probeFinished();
+    stopProbe();
+}
+
+void SocketTransport::onProbeError()
+{
+    qDebug() << "[WiFi probe] not found:" << m_probeDevice.host;
+    m_probeTimeout.stop();
+    emit probeFinished();
+    stopProbe();
+}
+
+void SocketTransport::onProbeTimeout()
+{
+    qDebug() << "[WiFi probe] timeout";
+    emit probeFinished();
+    stopProbe();
+}

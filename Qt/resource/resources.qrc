@@ -7,6 +7,7 @@
         <file alias="bluetooth.svg">img/蓝牙.svg</file>
         <file alias="gateway.svg">img/网关.svg</file>
         <file alias="chip.svg">img/芯片.svg</file>
+        <file alias="wireless.svg">img/无线.svg</file>
     </qresource>
     <qresource prefix="/i18n">
         <file alias="NearLink_Mesh_zh_CN.qm">translation/NearLink_Mesh_zh_CN.qm</file>

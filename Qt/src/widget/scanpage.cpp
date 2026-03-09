@@ -4,8 +4,8 @@
 #include <QFont>
 #include <QFrame>
 
-ScanPage::ScanPage(BleManager *ble, QWidget *parent)
-    : QWidget(parent), m_ble(ble)
+ScanPage::ScanPage(BleManager *ble, SocketTransport *wifi, QWidget *parent)
+    : QWidget(parent), m_ble(ble), m_wifi(wifi)
 {
     auto *mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(16, 16, 16, 16);
@@ -63,11 +63,18 @@ ScanPage::ScanPage(BleManager *ble, QWidget *parent)
     connect(m_ble, &BleManager::connStateChanged, this, &ScanPage::onConnStateChanged);
     connect(m_ble, &BleManager::scannedDevicesChanged, this, &ScanPage::onDevicesChanged);
     connect(m_ble, &BleManager::debugInfoChanged, this, &ScanPage::onDebugInfoChanged);
+    if (m_wifi) {
+        connect(m_wifi, &SocketTransport::wifiDeviceFound, this, &ScanPage::onWifiDeviceFound);
+    }
 }
 
 void ScanPage::onScanClicked()
 {
+    m_wifiDevices.clear();
     m_ble->startScan();
+    // 同时探测 WiFi 设备
+    if (m_wifi)
+        m_wifi->startProbe();
 }
 
 void ScanPage::onConnStateChanged(BleManager::ConnState state)
@@ -109,19 +116,37 @@ void ScanPage::onDebugInfoChanged(const QString &info)
 void ScanPage::onItemClicked(QListWidgetItem *item)
 {
     int index = item->data(Qt::UserRole).toInt();
-    emit deviceSelected(index);
+    if (index >= 0) {
+        emit deviceSelected(index);
+    } else {
+        int wifiIdx = -(index + 1);
+        if (wifiIdx >= 0 && wifiIdx < m_wifiDevices.size())
+            emit wifiDeviceSelected(m_wifiDevices.at(wifiIdx));
+    }
 }
+
+void ScanPage::onWifiDeviceFound(const WifiDevice &device)
+{
+    m_wifiDevices.append(device);
+    refreshDeviceList();
+}
+
+// item data encoding:
+//   UserRole int >= 0        → BLE device index
+//   UserRole int < 0         → WiFi device: -(wifiIndex+1)
 
 void ScanPage::refreshDeviceList()
 {
     m_deviceList->clear();
-    const auto &devices = m_ble->scannedDevices();
+    const auto &bleDevices = m_ble->scannedDevices();
 
-    m_hintLabel->setVisible(devices.isEmpty());
-    m_deviceList->setVisible(!devices.isEmpty());
+    bool anyDevice = !bleDevices.isEmpty() || !m_wifiDevices.isEmpty();
+    m_hintLabel->setVisible(!anyDevice);
+    m_deviceList->setVisible(anyDevice);
 
-    for (int i = 0; i < devices.size(); ++i) {
-        const auto &dev = devices.at(i);
+    // ─── BLE 设备 ─────────────────────────────────────────
+    for (int i = 0; i < bleDevices.size(); ++i) {
+        const auto &dev = bleDevices.at(i);
 
         auto *widget = new AAWidget();
         widget->setObjectName("deviceCard");
@@ -129,7 +154,6 @@ void ScanPage::refreshDeviceList()
         hLayout->setContentsMargins(14, 12, 14, 12);
         hLayout->setSpacing(12);
 
-        // BLE 图标
         auto *iconLabel = new QLabel(widget);
         iconLabel->setPixmap(StyleManager::loadSvgIcon(":/img/bluetooth.svg", 22));
         iconLabel->setFixedSize(36, 36);
@@ -137,7 +161,6 @@ void ScanPage::refreshDeviceList()
         iconLabel->setObjectName("deviceIcon");
         hLayout->addWidget(iconLabel, 0, Qt::AlignVCenter);
 
-        // 名称和地址
         auto *infoLayout = new QVBoxLayout();
         infoLayout->setSpacing(4);
         auto *nameLabel = new QLabel(dev.name, widget);
@@ -149,13 +172,52 @@ void ScanPage::refreshDeviceList()
         infoLayout->addWidget(addrLabel);
         hLayout->addLayout(infoLayout, 1);
 
-        // RSSI
         auto *rssiLabel = new QLabel(QString("%1 dBm").arg(dev.rssi), widget);
         rssiLabel->setObjectName(dev.rssi > -65 ? "rssiGood" : "rssiWeak");
         hLayout->addWidget(rssiLabel, 0, Qt::AlignVCenter);
 
         auto *item = new QListWidgetItem(m_deviceList);
-        item->setData(Qt::UserRole, i);
+        item->setData(Qt::UserRole, i);         // BLE: index >= 0
+        QSize hint = widget->sizeHint();
+        hint.setHeight(hint.height() + 8);
+        item->setSizeHint(hint);
+        m_deviceList->setItemWidget(item, widget);
+    }
+
+    // ─── WiFi 设备 ────────────────────────────────────────
+    for (int i = 0; i < m_wifiDevices.size(); ++i) {
+        const auto &dev = m_wifiDevices.at(i);
+
+        auto *widget = new AAWidget();
+        widget->setObjectName("deviceCard");
+        auto *hLayout = new QHBoxLayout(widget);
+        hLayout->setContentsMargins(14, 12, 14, 12);
+        hLayout->setSpacing(12);
+
+        auto *iconLabel = new QLabel(widget);
+        iconLabel->setPixmap(StyleManager::loadSvgIcon(":/img/wireless.svg", 22));
+        iconLabel->setFixedSize(36, 36);
+        iconLabel->setAlignment(Qt::AlignCenter);
+        iconLabel->setObjectName("deviceIcon");
+        hLayout->addWidget(iconLabel, 0, Qt::AlignVCenter);
+
+        auto *infoLayout = new QVBoxLayout();
+        infoLayout->setSpacing(4);
+        auto *nameLabel = new QLabel(dev.name, widget);
+        nameLabel->setObjectName("deviceName");
+        nameLabel->setMinimumHeight(22);
+        auto *addrLabel = new QLabel(QStringLiteral("%1:%2  [WiFi]").arg(dev.host).arg(dev.port), widget);
+        addrLabel->setObjectName("deviceAddr");
+        infoLayout->addWidget(nameLabel);
+        infoLayout->addWidget(addrLabel);
+        hLayout->addLayout(infoLayout, 1);
+
+        auto *tagLabel = new QLabel(tr("TCP"), widget);
+        tagLabel->setObjectName("rssiGood");
+        hLayout->addWidget(tagLabel, 0, Qt::AlignVCenter);
+
+        auto *item = new QListWidgetItem(m_deviceList);
+        item->setData(Qt::UserRole, -(i + 1));  // WiFi: 负数编码 -(index+1)
         QSize hint = widget->sizeHint();
         hint.setHeight(hint.height() + 8);
         item->setSizeHint(hint);

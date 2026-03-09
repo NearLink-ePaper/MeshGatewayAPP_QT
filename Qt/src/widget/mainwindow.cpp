@@ -45,6 +45,7 @@ MainWindow::MainWindow(QWidget *parent)
     // 信号连接
     connect(m_ble, &BleManager::connStateChanged, this, &MainWindow::onConnStateChanged);
     connect(m_scanPage, &ScanPage::deviceSelected, this, &MainWindow::onDeviceSelected);
+    connect(m_scanPage, &ScanPage::wifiDeviceSelected, this, &MainWindow::onWifiDeviceSelected);
 
     // 连接后自动查询拓扑（延迟 800ms 等 CCCD 订阅完成）
     m_topoQueryTimer.setSingleShot(true);
@@ -105,7 +106,7 @@ void MainWindow::setupPages()
     m_stack = new QStackedWidget(this);
 
     // 页面 0: 扫描页
-    m_scanPage = new ScanPage(m_ble, this);
+    m_scanPage = new ScanPage(m_ble, m_wifi, this);
     m_stack->addWidget(m_scanPage);
 
     // 页面 1: 连接中
@@ -160,6 +161,19 @@ void MainWindow::onDeviceSelected(int index)
     m_ble->connectToDevice(index);
 }
 
+void MainWindow::onWifiDeviceSelected(const WifiDevice &device)
+{
+    // 配置 SocketTransport 目标设备
+    m_wifi->setHost(device.host, device.port);
+
+    // 直接切换到已连接页面（WiFi 模式：无 BLE 拓扑，仅图传）
+    m_connectedPage->addLog(tr("📶 WiFi connected to %1 (%2:%3)")
+                                .arg(device.name).arg(device.host).arg(device.port));
+    m_stack->setCurrentIndex(2);
+
+    // 状态点显示绿色
+    m_statusDot->setStyleSheet("background-color: #4CAF50; border-radius: 5px;");
+}
 
 void MainWindow::updateStatusDot(BleManager::ConnState state)
 {

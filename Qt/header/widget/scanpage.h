@@ -10,6 +10,7 @@
 #include <QTimer>
 
 #include "blemanager.h"
+#include "sockettransport.h"
 #include "stylemanager.h"
 
 /**
@@ -20,10 +21,11 @@ class ScanPage : public QWidget
     Q_OBJECT
 
 public:
-    explicit ScanPage(BleManager *ble, QWidget *parent = nullptr);
+    explicit ScanPage(BleManager *ble, SocketTransport *wifi, QWidget *parent = nullptr);
 
 signals:
     void deviceSelected(int index);
+    void wifiDeviceSelected(const WifiDevice &device);
 
 private slots:
     void onScanClicked();
@@ -32,18 +34,22 @@ private slots:
     void onDebugInfoChanged(const QString &info);
     void onItemClicked(QListWidgetItem *item);
     void onCountdownTick();
+    void onWifiDeviceFound(const WifiDevice &device);
 
 private:
     void refreshDeviceList();
 
-    BleManager  *m_ble;
-    QLabel      *m_debugLabel;
-    AAButton    *m_scanBtn;
-    QListWidget *m_deviceList;
-    QLabel      *m_hintLabel;
-    QTimer       m_countdownTimer;
-    QTimer       m_rssiTimer;
-    int          m_remainingSec = 0;
+    BleManager      *m_ble;
+    SocketTransport *m_wifi;
+    QLabel          *m_debugLabel;
+    AAButton        *m_scanBtn;
+    QListWidget     *m_deviceList;
+    QLabel          *m_hintLabel;
+    QTimer           m_countdownTimer;
+    QTimer           m_rssiTimer;
+    int              m_remainingSec = 0;
+
+    QList<WifiDevice> m_wifiDevices;
 };
 
 #endif // SCANPAGE_H
