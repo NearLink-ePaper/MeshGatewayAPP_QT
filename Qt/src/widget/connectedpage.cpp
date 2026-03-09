@@ -182,7 +182,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     int screenH = 700;
     if (auto *screen = QGuiApplication::primaryScreen())
         screenH = screen->availableGeometry().height();
-    m_nodeScroll->setMaximumHeight(qMax(160, screenH * 3 / 10));
+    m_nodeScroll->setMaximumHeight(qMax(180, screenH * 4 / 10));
     m_nodeScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     m_nodeListContainer = new QWidget();

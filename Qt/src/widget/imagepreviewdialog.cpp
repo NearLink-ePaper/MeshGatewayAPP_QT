@@ -26,163 +26,189 @@ ImagePreviewDialog::ImagePreviewDialog(const QImage &croppedBitmap,
 
 void ImagePreviewDialog::buildUI()
 {
+    // ── 标题 ──────────────────────────────────────────────
     QString title;
     if (!m_multicastTargets.isEmpty())
-        title = tr("Image Preview → Multicast %1 nodes").arg(m_multicastTargets.size());
+        title = tr("Preview — Multicast %1 nodes").arg(m_multicastTargets.size());
     else
-        title = tr("Image Preview → 0x%1").arg(m_node.addr, 4, 16, QChar('0')).toUpper();
+        title = tr("Preview — 0x%1").arg(m_node.addr, 4, 16, QChar('0')).toUpper();
     setWindowTitle(title);
-    // 移动端自适应宽度
+
     int screenW = 420;
     if (auto *screen = QGuiApplication::primaryScreen())
         screenW = screen->availableGeometry().width();
-    setMinimumWidth(qMin(dp(400), screenW - 40));
+    int dlgW = qMin(dp(400), screenW - 32);
+    setMinimumWidth(dlgW);
 
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(dp(14), dp(14), dp(14), dp(14));
     layout->setSpacing(dp(10));
 
-    // 数据信息
+    // ── 信息条 ────────────────────────────────────────────
     QString sizeLabel;
     if (m_processed.dataSize < 1024)
         sizeLabel = QStringLiteral("%1 B").arg(m_processed.dataSize);
     else
         sizeLabel = QStringLiteral("%1 KB").arg(m_processed.dataSize / 1024.0, 0, 'f', 1);
-    auto *infoLabel = new QLabel(QStringLiteral("%1×%2 | JPEG Q%3 | %4 pkts | %5")
-                                     .arg(m_resolution.width).arg(m_resolution.height)
-                                     .arg(m_processed.jpegQuality)
-                                     .arg(m_processed.packetCount).arg(sizeLabel));
-    infoLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(11)));
-    infoLabel->setWordWrap(true);
-    layout->addWidget(infoLabel);
 
-    // 预览图: 原图 + JPEG 压缩后并排
-    auto *previewRow = new QHBoxLayout;
-    previewRow->setSpacing(dp(8));
+    auto *infoCard = new AAWidget(this);
+    infoCard->setObjectName("debugCard");
+    auto *infoCardLayout = new QHBoxLayout(infoCard);
+    infoCardLayout->setContentsMargins(dp(12), dp(8), dp(12), dp(8));
+    infoCardLayout->setSpacing(dp(8));
 
-    // 预览图尺寸按可用宽度自适应（两张并排 + 间距 + 边距）
-    int availW = qMin(dp(400), screenW - 40) - dp(40);
-    int maxPrevW = qMax(80, availW / 2 - dp(20));
+    auto *dimLabel = new QLabel(
+        QStringLiteral("%1 × %2").arg(m_resolution.width).arg(m_resolution.height), infoCard);
+    dimLabel->setStyleSheet(QStringLiteral(
+        "color: #E6EDF3; font-size: %1px; font-weight: 600;").arg(dp(13)));
+
+    auto *metaLabel = new QLabel(
+        QStringLiteral("JPEG Q%1  ·  %2 pkts  ·  %3")
+            .arg(m_processed.jpegQuality).arg(m_processed.packetCount).arg(sizeLabel), infoCard);
+    metaLabel->setStyleSheet(QStringLiteral(
+        "color: #888; font-size: %1px;").arg(dp(11)));
+    metaLabel->setWordWrap(true);
+
+    infoCardLayout->addWidget(dimLabel, 0);
+    infoCardLayout->addWidget(metaLabel, 1);
+    layout->addWidget(infoCard);
+
+    // ── 预览图：原图 + 墨水屏模拟并排 ─────────────────────
+    int availW = dlgW - dp(28);
+    int maxPrevW = qMax(80, availW / 2 - dp(12));
     int maxPrevH = maxPrevW * 14 / 10;
 
-    // 原图
-    auto *origFrame = new QWidget;
-    auto *origLayout = new QVBoxLayout(origFrame);
-    origLayout->setContentsMargins(0, 0, 0, 0);
-    origLayout->setSpacing(dp(4));
-    auto *origTitle = new QLabel(tr("Original"));
-    origTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
+    auto *previewCard = new AAWidget(this);
+    previewCard->setObjectName("nodeCard");
+    auto *previewRow = new QHBoxLayout(previewCard);
+    previewRow->setContentsMargins(dp(10), dp(10), dp(10), dp(10));
+    previewRow->setSpacing(dp(8));
+
+    // 原图列
+    auto *origCol = new QVBoxLayout;
+    origCol->setSpacing(dp(4));
+    auto *origTitle = new QLabel(tr("Original"), previewCard);
+    origTitle->setStyleSheet(QStringLiteral("color: #666; font-size: %1px;").arg(dp(10)));
     origTitle->setAlignment(Qt::AlignCenter);
-    origLayout->addWidget(origTitle);
-    auto *origImgLabel = new QLabel;
+    auto *origImgLabel = new QLabel(previewCard);
     QPixmap origPix = QPixmap::fromImage(m_croppedBitmap.scaled(
         m_resolution.width, m_resolution.height, Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
     origPix = origPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     origImgLabel->setPixmap(origPix);
     origImgLabel->setAlignment(Qt::AlignCenter);
-    origImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px;").arg(dp(4)));
-    origLayout->addWidget(origImgLabel);
-    previewRow->addWidget(origFrame);
+    origImgLabel->setStyleSheet(QStringLiteral(
+        "border: 1px solid #333; border-radius: %1px; background: #fff;").arg(dp(4)));
+    origCol->addWidget(origTitle);
+    origCol->addWidget(origImgLabel, 0, Qt::AlignCenter);
+    previewRow->addLayout(origCol, 1);
 
-    // 箭头
-    auto *arrowLabel = new QLabel(QStringLiteral("→"));
-    arrowLabel->setStyleSheet(QStringLiteral("color: #4FC3F7; font-size: %1px;").arg(dp(20)));
+    // 分隔箭头
+    auto *arrowLabel = new QLabel(QStringLiteral("→"), previewCard);
+    arrowLabel->setStyleSheet(QStringLiteral(
+        "color: #4FC3F7; font-size: %1px; font-weight: bold;").arg(dp(18)));
     arrowLabel->setAlignment(Qt::AlignCenter);
-    previewRow->addWidget(arrowLabel);
+    previewRow->addWidget(arrowLabel, 0, Qt::AlignVCenter);
 
-    // 墨水屏模拟预览 (6色抖动)
-    auto *epdFrame = new QWidget;
-    auto *epdLayout = new QVBoxLayout(epdFrame);
-    epdLayout->setContentsMargins(0, 0, 0, 0);
-    epdLayout->setSpacing(dp(4));
-    auto *epdTitle = new QLabel(tr("E-Paper Preview"));
-    epdTitle->setStyleSheet(QStringLiteral("color: #888; font-size: %1px;").arg(dp(10)));
+    // 墨水屏预览列
+    auto *epdCol = new QVBoxLayout;
+    epdCol->setSpacing(dp(4));
+    auto *epdTitle = new QLabel(tr("E-Paper"), previewCard);
+    epdTitle->setStyleSheet(QStringLiteral("color: #666; font-size: %1px;").arg(dp(10)));
     epdTitle->setAlignment(Qt::AlignCenter);
-    epdLayout->addWidget(epdTitle);
-    auto *epdImgLabel = new QLabel;
-    QPixmap epdPix = QPixmap::fromImage(m_processed.previewBitmap);
-    epdPix = epdPix.scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    auto *epdImgLabel = new QLabel(previewCard);
+    QPixmap epdPix = QPixmap::fromImage(m_processed.previewBitmap)
+        .scaled(maxPrevW, maxPrevH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     epdImgLabel->setPixmap(epdPix);
     epdImgLabel->setAlignment(Qt::AlignCenter);
-    epdImgLabel->setStyleSheet(QStringLiteral("border: 1px solid #333; border-radius: %1px;").arg(dp(4)));
-    epdLayout->addWidget(epdImgLabel);
-    previewRow->addWidget(epdFrame);
+    epdImgLabel->setStyleSheet(QStringLiteral(
+        "border: 1px solid #333; border-radius: %1px; background: #fff;").arg(dp(4)));
+    epdCol->addWidget(epdTitle);
+    epdCol->addWidget(epdImgLabel, 0, Qt::AlignCenter);
+    previewRow->addLayout(epdCol, 1);
 
-    layout->addLayout(previewRow);
+    layout->addWidget(previewCard);
 
-    // 传输模式选择 (仅单播时显示)
+    // ── 传输模式 (单播时显示) ─────────────────────────────
     if (m_multicastTargets.isEmpty()) {
-        auto *modeRow = new QHBoxLayout;
-        auto *modeLabel = new QLabel(tr("Mode"));
-        modeLabel->setStyleSheet(QStringLiteral("color: #B0BEC5; font-size: %1px;").arg(dp(12)));
-        modeRow->addWidget(modeLabel);
-        m_modeCombo = new QComboBox;
-        m_modeCombo->addItem(tr("FAST (gateway flow control)"));
-        m_modeCombo->addItem(tr("ACK (per-packet confirm)"));
+        auto *modeCard = new AAWidget(this);
+        modeCard->setObjectName("debugCard");
+        auto *modeLayout = new QHBoxLayout(modeCard);
+        modeLayout->setContentsMargins(dp(12), dp(8), dp(12), dp(8));
+        modeLayout->setSpacing(dp(6));
+
+        auto *modeTitleLabel = new QLabel(tr("Mode"), modeCard);
+        modeTitleLabel->setStyleSheet(QStringLiteral(
+            "color: #888; font-size: %1px;").arg(dp(12)));
+        modeLayout->addWidget(modeTitleLabel);
+        modeLayout->addStretch();
+
+        m_modeCombo = new QComboBox(modeCard);
+        m_modeCombo->addItem(tr("FAST"));
+        m_modeCombo->addItem(tr("ACK"));
         m_modeCombo->setCurrentIndex(0);
-        modeRow->addWidget(m_modeCombo);
-        modeRow->addStretch();
-        layout->addLayout(modeRow);
+        m_modeCombo->setMinimumHeight(dp(32));
+        m_modeCombo->setToolTip(tr("FAST: gateway flow control\nACK: per-packet confirm"));
+        modeLayout->addWidget(m_modeCombo);
+        layout->addWidget(modeCard);
     }
 
-    // 按钮行
-    auto *btnRow = new QHBoxLayout;
-    btnRow->addStretch();
-    auto *cancelBtn = new QPushButton(tr("Cancel"));
-    cancelBtn->setFlat(true);
-    cancelBtn->setStyleSheet(QStringLiteral("color: #888;"));
-    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-    btnRow->addWidget(cancelBtn);
+    // ── 发送按钮 ──────────────────────────────────────────
+    // BLE 发送
+    QString bleText = m_multicastTargets.isEmpty()
+        ? tr("Send via BLE  (%1)").arg(sizeLabel)
+        : tr("Multicast via BLE  (%1)  ▶").arg(sizeLabel);
+    QString bleColor = m_multicastTargets.isEmpty()
+        ? QStringLiteral("#4FC3F7") : QStringLiteral("#AB47BC");
 
-    QString sendText;
-    if (!m_multicastTargets.isEmpty())
-        sendText = tr("Multicast Send (%1)").arg(sizeLabel);
-    else
-        sendText = tr("Send (%1)").arg(sizeLabel);
-
-    auto *sendBtn = new AAButton(sendText);
-    QString sendColor = m_multicastTargets.isEmpty()
-        ? QStringLiteral("#4FC3F7") : QStringLiteral("#9C27B0");
+    auto *sendBtn = new AAButton(bleText, this);
+    sendBtn->setMinimumHeight(dp(52));
     sendBtn->setStyleSheet(QStringLiteral(
-        "AAButton { background: %1; color: white; font-weight: bold; "
-        "border-radius: %2px; padding: %3px %4px; font-size: %5px; }"
-        "AAButton:hover { background: %1; opacity: 0.8; }")
-        .arg(sendColor).arg(dp(6)).arg(dp(8)).arg(dp(16)).arg(dp(13)));
+        "AAButton { background: rgba(%1, 0.18); color: %2; font-weight: 600; "
+        "border-radius: %3px; font-size: %4px; }"
+        "AAButton:hover { background: rgba(%1, 0.35); }")
+        .arg(m_multicastTargets.isEmpty() ? "79,195,247" : "171,71,188")
+        .arg(bleColor).arg(dp(10)).arg(dp(14)));
     connect(sendBtn, &QPushButton::clicked, this, [this]() {
         BleManager::ImageSendMode mode = BleManager::FastMode;
         if (m_modeCombo && m_modeCombo->currentIndex() == 1)
             mode = BleManager::AckMode;
-        // JPEG 模式: 图像已预旋转为 landscape, 发送实际 JPEG 尺寸 (height×width)
-        int sendW = m_resolution.width;
-        int sendH = m_resolution.height;
+        int sendW = m_resolution.width, sendH = m_resolution.height;
         if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
-            sendW = m_resolution.height;
-            sendH = m_resolution.width;
+            sendW = m_resolution.height; sendH = m_resolution.width;
         }
         emit sendRequested(m_processed.imageData, sendW, sendH,
                            mode, m_processed.imageMode, m_processed.previewBitmap);
         accept();
     });
-    btnRow->addWidget(sendBtn);
+    layout->addWidget(sendBtn);
 
-    /* WiFi 直传按钮 */
-    auto *wifiBtn = new AAButton(tr("WiFi Send (%1)").arg(sizeLabel));
+    // WiFi 发送
+    auto *wifiBtn = new AAButton(tr("Send via WiFi  (%1)").arg(sizeLabel), this);
+    wifiBtn->setMinimumHeight(dp(44));
     wifiBtn->setStyleSheet(QStringLiteral(
-        "AAButton { background: #4CAF50; color: white; font-weight: bold; "
-        "border-radius: %1px; padding: %2px %3px; font-size: %4px; }"
-        "AAButton:hover { background: #388E3C; }")
-        .arg(dp(6)).arg(dp(8)).arg(dp(16)).arg(dp(13)));
+        "AAButton { background: rgba(76,175,80,0.15); color: #4CAF50; font-weight: 600; "
+        "border-radius: %1px; font-size: %2px; }"
+        "AAButton:hover { background: rgba(76,175,80,0.30); }")
+        .arg(dp(10)).arg(dp(13)));
     connect(wifiBtn, &QPushButton::clicked, this, [this]() {
-        int sendW = m_resolution.width;
-        int sendH = m_resolution.height;
+        int sendW = m_resolution.width, sendH = m_resolution.height;
         if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
-            sendW = m_resolution.height;
-            sendH = m_resolution.width;
+            sendW = m_resolution.height; sendH = m_resolution.width;
         }
         emit wifiSendRequested(m_processed.imageData, sendW, sendH,
                                m_processed.imageMode, m_processed.previewBitmap);
         accept();
     });
-    btnRow->addWidget(wifiBtn);
+    layout->addWidget(wifiBtn);
 
-    layout->addLayout(btnRow);
+    // 取消
+    auto *cancelBtn = new AAButton(tr("Cancel"), this);
+    cancelBtn->setMinimumHeight(dp(36));
+    cancelBtn->setStyleSheet(QStringLiteral(
+        "AAButton { background: transparent; color: #484F58; "
+        "border-radius: %1px; font-size: %2px; }"
+        "AAButton:hover { color: #888; }")
+        .arg(dp(8)).arg(dp(12)));
+    connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+    layout->addWidget(cancelBtn);
 }

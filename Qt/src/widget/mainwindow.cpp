@@ -8,6 +8,7 @@
 #include <QProgressBar>
 #include <QFileDialog>
 #include <QImageReader>
+#include <QStandardPaths>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -241,7 +242,13 @@ void MainWindow::openImagePicker(const MeshNode &node, const QList<quint16> &mul
         filters << QStringLiteral("*.%1").arg(QString::fromLatin1(fmt));
     QString filter = tr("Images (%1)").arg(filters.join(' '));
 
-    QString path = QFileDialog::getOpenFileName(this, tr("Select Image"), QString(), filter);
+    // 移动端从相册目录启动，桌面端从上次目录启动
+#if defined(Q_OS_ANDROID) || defined(Q_OS_IOS)
+    QString startDir = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
+#else
+    QString startDir = QString();
+#endif
+    QString path = QFileDialog::getOpenFileName(this, tr("Select Image"), startDir, filter);
     if (path.isEmpty()) return;
 
     QImage img(path);
