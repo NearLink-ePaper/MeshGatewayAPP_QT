@@ -55,39 +55,67 @@ static int findNearestPaletteIndex(int r, int g, int b)
 }
 
 /**
- * 量化为墨水屏 6 色并生成预览图（无抖动，与 converterTo6color 算法一致）
- * 同时打包为 4bpp nibble 格式 (高nibble=左像素, 低nibble=右像素)
- * @param src     RGB888 QImage (portrait)
- * @param nibbles 输出：4bpp packed 数据
- * @return        预览用 RGB888 QImage
+ * 纯最近邻量化 → 4bpp nibble 数据（与 converterTo6color 完全一致）
+ * 不做抖动，直接打包为固件接受的格式。
  */
-static QImage quantizeToEpd(const QImage &src, QByteArray &nibbles)
+static void quantizeToNibbles(const QImage &src, QByteArray &nibbles)
 {
     int w = src.width();
     int h = src.height();
-    QImage out(w, h, QImage::Format_RGB888);
     nibbles.resize((w * h + 1) / 2);
     nibbles.fill(0);
 
     for (int y = 0; y < h; ++y) {
         const uchar *sl = src.constScanLine(y);
-        uchar       *dl = out.scanLine(y);
         for (int x = 0; x < w; ++x) {
-            int r = sl[x * 3 + 0];
-            int g = sl[x * 3 + 1];
-            int b = sl[x * 3 + 2];
-
-            int pi = findNearestPaletteIndex(r, g, b);
-            dl[x * 3 + 0] = (uchar)kEpdPalette[pi].r;
-            dl[x * 3 + 1] = (uchar)kEpdPalette[pi].g;
-            dl[x * 3 + 2] = (uchar)kEpdPalette[pi].b;
-
-            int ei = findNearestEpdIndex(r, g, b);   // hardware index
-            int bytePos = (y * w + x) / 2;
-            if ((y * w + x) % 2 == 0)
-                nibbles[bytePos] = (char)((ei & 0x0F) << 4);   // high nibble
+            int ei = findNearestEpdIndex(sl[x*3], sl[x*3+1], sl[x*3+2]);
+            int pos = y * w + x;
+            if (pos % 2 == 0)
+                nibbles[pos / 2] = (char)((ei & 0x0F) << 4);
             else
-                nibbles[bytePos] = (char)(nibbles[bytePos] | (ei & 0x0F));  // low nibble
+                nibbles[pos / 2] = (char)(nibbles[pos / 2] | (ei & 0x0F));
+        }
+    }
+}
+
+static inline int clamp255(int v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
+
+/**
+ * Floyd-Steinberg 抖动 → RGB 预览图（仅用于屏幕显示）
+ * 抖动后的颜色更接近人眼感知的墨水屏效果，不影响实际发送数据。
+ */
+static QImage ditherEpdPreview(const QImage &src)
+{
+    int w = src.width();
+    int h = src.height();
+    QVector<int> bufR(w * h), bufG(w * h), bufB(w * h);
+    for (int y = 0; y < h; ++y) {
+        const uchar *line = src.constScanLine(y);
+        for (int x = 0; x < w; ++x) {
+            int i = y * w + x;
+            bufR[i] = line[x*3+0];
+            bufG[i] = line[x*3+1];
+            bufB[i] = line[x*3+2];
+        }
+    }
+    QImage out(w, h, QImage::Format_RGB888);
+    for (int y = 0; y < h; ++y) {
+        uchar *dl = out.scanLine(y);
+        for (int x = 0; x < w; ++x) {
+            int i = y * w + x;
+            int oldR = clamp255(bufR[i]);
+            int oldG = clamp255(bufG[i]);
+            int oldB = clamp255(bufB[i]);
+            int pi = findNearestPaletteIndex(oldR, oldG, oldB);
+            int newR = kEpdPalette[pi].r, newG = kEpdPalette[pi].g, newB = kEpdPalette[pi].b;
+            dl[x*3+0] = (uchar)newR; dl[x*3+1] = (uchar)newG; dl[x*3+2] = (uchar)newB;
+            int eR = oldR - newR, eG = oldG - newG, eB = oldB - newB;
+            if (x+1 < w) { bufR[i+1]+=eR*7/16; bufG[i+1]+=eG*7/16; bufB[i+1]+=eB*7/16; }
+            if (y+1 < h) {
+                if (x>0) { bufR[i+w-1]+=eR*3/16; bufG[i+w-1]+=eG*3/16; bufB[i+w-1]+=eB*3/16; }
+                bufR[i+w]+=eR*5/16; bufG[i+w]+=eG*5/16; bufB[i+w]+=eB*5/16;
+                if (x+1<w) { bufR[i+w+1]+=eR/16; bufG[i+w+1]+=eG/16; bufB[i+w+1]+=eB/16; }
+            }
         }
     }
     return out;
@@ -116,7 +144,8 @@ ProcessedImage ImageUtils::processFromCropped(const QImage &cropped, int targetW
     // (固件 EPD_display_4bpp 内部做 90° CW 旋转)
     if (targetW * targetH <= 240 * 360) {
         QByteArray nibbles;
-        QImage preview = quantizeToEpd(scaled, nibbles);
+        quantizeToNibbles(scaled, nibbles);        // 纯NN → 设备数据
+        QImage preview = ditherEpdPreview(scaled); // FS抖动 → 屏幕预览
 
         result.previewBitmap = preview;
         result.imageData     = nibbles;
@@ -145,8 +174,7 @@ ProcessedImage ImageUtils::processFromCropped(const QImage &cropped, int targetW
     QImage jpegDecoded;
     jpegDecoded.loadFromData(jpegData, "JPEG");
     jpegDecoded = jpegDecoded.convertToFormat(QImage::Format_RGB888);
-    QByteArray dummyNibbles;
-    QImage quantized = quantizeToEpd(jpegDecoded, dummyNibbles);
+    QImage quantized = ditherEpdPreview(jpegDecoded); // FS抖动预览
     QTransform rotBack;
     rotBack.rotate(-90);
 
