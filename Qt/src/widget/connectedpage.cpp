@@ -189,7 +189,7 @@ ConnectedPage::ConnectedPage(BleManager *ble, QWidget *parent)
     // 移动端触摸滚动（使用 TouchGesture 避免拦截 QLineEdit 输入法事件）
     QScroller::grabGesture(m_nodeScroll->viewport(), QScroller::TouchGesture);
 
-    mainLayout->addWidget(m_nodeScroll, 3);
+    mainLayout->addWidget(m_nodeScroll, 2);
 
     // 组播操作栏 (默认隐藏)
     m_multicastBar = new QWidget(this);
