@@ -32,13 +32,28 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     }
     QColor accent(hopsColor);
 
+    // 半透明暗遮罩背景（避免 Android 裸透明导致的按钮合成撕裂）
+    setStyleSheet(QStringLiteral(
+        "QDialog { background-color: rgba(0,0,0,160); }"));
+
     // ── iOS action-sheet 风格: 顶部大弹性区 + 底部紧凑内容卡 ──
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // 顶部弹性区（点透明，内容推到底部）
-    root->addStretch(3);
+    // 顶部区域：有上次发送图时展开显示，无图时纯弹性空间
+    if (!lastSentBitmap.isNull()) {
+        auto *imgArea = new QLabel(this);
+        imgArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        imgArea->setAlignment(Qt::AlignCenter);
+        int maxH = scrH * 6 / 10;
+        QPixmap pix = QPixmap::fromImage(lastSentBitmap)
+            .scaled(scrW - 32, maxH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        imgArea->setPixmap(pix);
+        root->addWidget(imgArea, 3);
+    } else {
+        root->addStretch(3);
+    }
 
     // ─────────── 底部内容卡（圆角顶部） ───────────
     auto *sheet = new AAWidget(this);
@@ -85,27 +100,6 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     headerRow->addWidget(avatarLabel);
     headerRow->addLayout(addrCol, 1);
     sheetLayout->addLayout(headerRow);
-
-    // ── 上次发送预览 ──
-    if (!lastSentBitmap.isNull()) {
-        auto *prevRow = new QHBoxLayout();
-        prevRow->setSpacing(dp(10));
-
-        auto *prevTitle = new QLabel(tr("上次发送"), sheet);
-        prevTitle->setStyleSheet(QStringLiteral(
-            "color:#6E7681; font-size:%1px;").arg(dp(11)));
-
-        auto *prevLabel = new QLabel(sheet);
-        int prevSize = qMin(qMin(scrW / 4, scrH / 8), dp(80));
-        QPixmap pix = QPixmap::fromImage(lastSentBitmap)
-            .scaled(prevSize, prevSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        prevLabel->setPixmap(pix);
-        prevLabel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-
-        prevRow->addWidget(prevTitle, 1, Qt::AlignVCenter);
-        prevRow->addWidget(prevLabel);
-        sheetLayout->addLayout(prevRow);
-    }
 
     // ── 分割线 ──
     auto *sep = new QFrame(sheet);
