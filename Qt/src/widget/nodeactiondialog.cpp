@@ -33,11 +33,10 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     QColor accent(hopsColor);
 
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(dp(16), dp(16), dp(16), dp(12));
-    root->setSpacing(dp(8));
-    root->setSizeConstraint(QLayout::SetMinimumSize);  /* 高度自适应，宽度由 setFixedWidth 控制 */
+    root->setContentsMargins(dp(16), dp(20), dp(16), dp(20));
+    root->setSpacing(0);
 
-    // ─────────────── 头部信息卡 ───────────────
+    // ─────────────── 头部信息卡（置顶） ───────────────
     auto *headerCard = new AAWidget(this);
     headerCard->setBgColor(QColor(30, 38, 50));
     headerCard->setBorderColor(QColor(accent.red(), accent.green(), accent.blue(), 60));
@@ -56,8 +55,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     avatarLabel->setStyleSheet(QStringLiteral(
         "color: %1; font-size: %2px; font-weight: 700; "
         "background: rgba(%3,%4,%5,0.18); border-radius: %6px;")
-        .arg(hopsColor)
-        .arg(dp(14))
+        .arg(hopsColor).arg(dp(14))
         .arg(accent.red()).arg(accent.green()).arg(accent.blue())
         .arg(dp(22)));
     avatarLabel->setText(hopsText);
@@ -82,8 +80,9 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     headerLayout->addLayout(addrCol, 1);
     root->addWidget(headerCard);
 
-    // ─────────────── 上次发送预览 ───────────────
+    // ─────────────── 上次发送预览（紧跟 header） ───────────────
     if (!lastSentBitmap.isNull()) {
+        root->addSpacing(dp(10));
         auto *prevCard = new AAWidget(this);
         prevCard->setBgColor(QColor(22, 27, 34));
         prevCard->setBorderColor(QColor(240, 246, 252, 15));
@@ -99,7 +98,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
             "color:#6E7681; font-size:%1px;").arg(dp(11)));
 
         auto *prevLabel = new QLabel(prevCard);
-        int prevSize = qMin(qMin(scrW - 80, scrH / 4), 180);
+        int prevSize = qMin(qMin(scrW - 80, scrH / 4), dp(160));
         QPixmap pix = QPixmap::fromImage(lastSentBitmap)
             .scaled(prevSize, prevSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         prevLabel->setPixmap(pix);
@@ -109,7 +108,15 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         root->addWidget(prevCard);
     }
 
-    // ─────────────── 操作按钮 ───────────────
+    // ─────────────── 弹性空间：把按钮推到底部 ───────────────
+    root->addStretch(1);
+
+    // ─────────────── 操作按钮（靠底部） ───────────────
+    auto *btnContainer = new QWidget(this);
+    auto *btnLayout = new QVBoxLayout(btnContainer);
+    btnLayout->setContentsMargins(0, 0, 0, 0);
+    btnLayout->setSpacing(dp(10));
+
     // 主操作: 发送图片（实心蓝色）
     auto *imgBtn = new AAButton(tr("发送图片"), this);
     imgBtn->setMinimumHeight(dp(52));
@@ -131,7 +138,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         emit sendImageRequested(m_node);
         accept();
     });
-    root->addWidget(imgBtn);
+    btnLayout->addWidget(imgBtn);
 
     // 次操作: 发送文本（边框风格）
     auto *textBtn = new AAButton(tr("发送文本"), this);
@@ -154,7 +161,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         emit sendTextRequested(m_node);
         accept();
     });
-    root->addWidget(textBtn);
+    btnLayout->addWidget(textBtn);
 
     // 取消（淡色文字）
     auto *cancelBtn = new AAButton(tr("取消"), this);
@@ -172,5 +179,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     fSmall.setPixelSize(dp(13));
     cancelBtn->setFont(fSmall);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-    root->addWidget(cancelBtn);
+    btnLayout->addWidget(cancelBtn);
+
+    root->addWidget(btnContainer);
 }
