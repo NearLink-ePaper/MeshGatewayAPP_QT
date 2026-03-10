@@ -13,7 +13,7 @@
 
 #define SPI_WAIT_CYCLES 0x10
 
-#define SPI_TASK_STACK_SIZE 0x8000  /* 32KB: 支持 4bpp 显示和 JPEG 流式解码 */
+#define SPI_TASK_STACK_SIZE 0x2000  /* 8KB: 回退至原始值，节省堆空间支持 96KB 图片缓冲区 */
 #define SPI_TASK_DURATION_MS 1000
 #define SPI_TASK_PRIO (osPriority_t)(17)
 
