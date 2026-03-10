@@ -118,7 +118,7 @@ static void *epaper_init_task(const char *arg) {
                     }
                     image_receiver_reset(); /* 缓冲区数据已发送到 EPD, 可安全复用 */
                     EPD_refresh();
-                } else if (mode == IMG_MODE_H_LSB) {
+                } else if (mode == IMG_MODE_RAW) {
                     /* 4bpp nibble (converterTo6color 格式): portrait → 固件旋转 90° CW */
                     EPD_display_4bpp(buf, width, height);
                     image_receiver_reset(); /* EPD_display_4bpp 内含 refresh */
