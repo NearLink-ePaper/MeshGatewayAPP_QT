@@ -142,9 +142,8 @@ static struct {
  *  收到 END 帧后，由流控引擎将数据重新分包 (大包负载) 注入 Mesh。
  *  缓存大小取决于目标图片最大尺寸，当前 48KB 可支持 296x128 墨水屏图片。
  * ===================================================================== */
-#define IMG_GW_CACHE_SIZE     48000  /**< 图片缓存大小 (字节)。根据目标屏幕分辨率调整，
-                                          要确保 >= 图片原始数据总字节数。内存受限时可缩小 */
-#define IMG_GW_PKT_PAYLOAD    200    /**< APP 端每包的原始负载大小 (字节)，由 APP 度分包决定 */
+#define IMG_GW_CACHE_SIZE     192000 /**< 图片缓存大小: 480×800 4bpp = 192000 字节 (SRAM 606KB 充足) */
+#define IMG_GW_PKT_PAYLOAD    200    /**< APP 端每包的原始负载大小 (字节)，由 APP 分包决定 */
 #define IMG_GW_MAX_RETRY      5      /**< 流控补包最大轮次。超过此次数后放弃传输。
                                           网络质量差时可适当增大 (7-10) */
 #define IMG_GW_BITMAP_BYTES   ((IMG_GW_CACHE_SIZE / IMG_FC_PKT_PAYLOAD + 7) / 8)  /**< O4: 缺包位图字节数，每 bit 表示一个 FC 大包是否缺失 */

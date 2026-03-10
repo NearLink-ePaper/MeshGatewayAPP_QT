@@ -455,6 +455,12 @@ void BleManager::onCharacteristicWritten(const QLowEnergyCharacteristic &c, cons
     Q_UNUSED(value)
     m_writePending = false;
     drainWriteQueue();
+    // 图片 FAST 模式：写入完成立即发下包，不等 5ms 定时器，速度取决于 BLE 链路 RTT
+    if (!m_writePending && !m_imgCancelled
+        && m_imageSendState.type == ImgSending
+        && m_imgFastSeq >= 0 && m_imgFastSeq < m_imgTotalPkts) {
+        imgSendNextFastPaced();
+    }
 }
 
 void BleManager::handleNotify(const QByteArray &data)
@@ -698,9 +704,7 @@ void BleManager::imgSendNextFastPaced()
     QByteArray frame = MeshProtocol::buildImageData(m_imgDstAddr, static_cast<quint16>(seq), m_imgPackets[seq]);
     sendRaw(frame);
     m_imgFastSeq = seq + 1;
-
-    // 5ms 包间延时
-    m_imgFastPaceTimer.start(5);
+    // 不再使用定时器延迟，由 onCharacteristicWritten 回调驱动
 }
 
 void BleManager::imgUpdateFastProgress()
