@@ -60,14 +60,22 @@ public:
     void clearMulticastSelection();
     /** WiFi 模式：设置设备信息并构造一个可点击的 WiFi 节点卡片 */
     void setWifiMode(const WifiDevice &device);
+    /** 重置为 BLE 模式（断开 WiFi 后调用） */
+    void resetMode();
 
 signals:
     void nodeClicked(const MeshNode &node);
     void multicastImageRequested(const QList<quint16> &targets);
+    void wifiDisconnectRequested();
+    void wifiCancelRequested();
 
 public slots:
     void onMessageReceived(const UpstreamMessage &msg);
     void onImageSendStateChanged(const BleManager::ImageSendState &state);
+    /** WiFi 传输进度更新 */
+    void updateWifiProgress(int bytesSent, int totalBytes);
+    /** WiFi 传输状态变化 */
+    void onWifiStateChanged(SocketTransport::State state, const QString &msg = {});
 
 private slots:
     void onQueryTopoClicked();
@@ -87,6 +95,7 @@ private:
     void updateProgressBar(const BleManager::ImageSendState &state);
 
     BleManager        *m_ble;
+    bool               m_wifiMode = false;
 
     QLabel            *m_debugLabel;
     QLabel            *m_deviceNameLabel;

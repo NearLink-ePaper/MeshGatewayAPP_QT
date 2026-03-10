@@ -344,7 +344,11 @@ void ConnectedPage::onQueryTopoClicked()
 
 void ConnectedPage::onDisconnectClicked()
 {
-    m_ble->disconnectDevice();
+    if (m_wifiMode) {
+        emit wifiDisconnectRequested();
+    } else {
+        m_ble->disconnectDevice();
+    }
 }
 
 void ConnectedPage::onBroadcastClicked()
@@ -481,7 +485,11 @@ void ConnectedPage::onMulticastSendClicked()
 
 void ConnectedPage::onCancelImageClicked()
 {
-    m_ble->cancelImageSend();
+    if (m_wifiMode) {
+        emit wifiCancelRequested();
+    } else {
+        m_ble->cancelImageSend();
+    }
 }
 
 // ─── 图片传输进度 ───────────────────────────────
@@ -583,10 +591,71 @@ void ConnectedPage::updateProgressBar(const BleManager::ImageSendState &state)
     }
 }
 
+// ─── WiFi 进度 ───────────────────────────────────────────
+
+void ConnectedPage::updateWifiProgress(int bytesSent, int totalBytes)
+{
+    if (totalBytes <= 0) return;
+    m_progressContainer->setVisible(true);
+    int pct = bytesSent * 100 / totalBytes;
+    m_progressBar->setValue(pct);
+    m_progressLabel->setText(tr("上传 %1/%2 KB")
+        .arg(bytesSent / 1024).arg(totalBytes / 1024));
+    m_cancelImgBtn->setVisible(true);
+}
+
+void ConnectedPage::onWifiStateChanged(SocketTransport::State state, const QString &msg)
+{
+    switch (state) {
+    case SocketTransport::Connecting:
+        m_progressContainer->setVisible(true);
+        m_progressBar->setValue(0);
+        m_progressLabel->setText(tr("正在连接..."));
+        m_cancelImgBtn->setVisible(true);
+        break;
+    case SocketTransport::Sending:
+        m_progressContainer->setVisible(true);
+        m_progressLabel->setText(tr("发送中..."));
+        m_cancelImgBtn->setVisible(true);
+        break;
+    case SocketTransport::WaitingReply:
+        m_progressBar->setValue(100);
+        m_progressLabel->setText(tr("等待设备响应..."));
+        m_cancelImgBtn->setVisible(false);
+        break;
+    case SocketTransport::Done:
+        m_progressBar->setValue(100);
+        m_progressLabel->setText(msg.isEmpty() ? tr("发送成功 ✔") : msg);
+        m_cancelImgBtn->setVisible(false);
+        QTimer::singleShot(3000, this, [this]() {
+            m_progressContainer->setVisible(false);
+        });
+        break;
+    case SocketTransport::Error:
+        m_progressBar->setValue(0);
+        m_progressLabel->setText(msg.isEmpty() ? tr("发送失败") : tr("失败: %1").arg(msg));
+        m_cancelImgBtn->setVisible(false);
+        QTimer::singleShot(3000, this, [this]() {
+            m_progressContainer->setVisible(false);
+        });
+        break;
+    default:
+        break;
+    }
+}
+
 // ─── WiFi 模式 ────────────────────────────────────────────
+
+void ConnectedPage::resetMode()
+{
+    m_wifiMode = false;
+    m_queryTopoBtn->setVisible(true);
+    m_progressContainer->setVisible(false);
+}
 
 void ConnectedPage::setWifiMode(const WifiDevice &device)
 {
+    m_wifiMode = true;
     // 设备信息卡片显示 WiFi 设备
     m_deviceNameLabel->setText(device.name);
     m_gwAddrLabel->setText(

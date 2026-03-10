@@ -67,8 +67,16 @@ MainWindow::MainWindow(QWidget *parent)
     // 图片传输完成后自动刷新拓扑
     connect(m_ble, &BleManager::imageSendStateChanged, this, &MainWindow::onImageSendDone);
 
-    // WiFi 传输结果日志
+    // WiFi 传输进度 / 状态 / 结果
+    connect(m_wifi, &SocketTransport::progressChanged,
+            m_connectedPage, &ConnectedPage::updateWifiProgress);
+    connect(m_wifi, &SocketTransport::stateChanged, this,
+            [this](SocketTransport::State s) {
+        m_connectedPage->onWifiStateChanged(s);
+    });
     connect(m_wifi, &SocketTransport::finished, this, [this](bool ok, const QString &msg) {
+        m_connectedPage->onWifiStateChanged(
+            ok ? SocketTransport::Done : SocketTransport::Error, msg);
         m_connectedPage->addLog(ok ? tr("[WiFi] %1").arg(msg)
                                    : tr("[WiFi] 失败: %1").arg(msg));
     });
@@ -131,6 +139,18 @@ void MainWindow::setupPages()
     m_connectedPage = new ConnectedPage(m_ble, this);
     connect(m_connectedPage, &ConnectedPage::nodeClicked, this, &MainWindow::onNodeClicked);
     connect(m_connectedPage, &ConnectedPage::multicastImageRequested, this, &MainWindow::onMulticastImageRequested);
+    // WiFi 断开：取消传输，恢复扫描页
+    connect(m_connectedPage, &ConnectedPage::wifiDisconnectRequested, this, [this]() {
+        m_wifi->cancel();
+        m_connectedPage->resetMode();
+        m_currentTransport = ImagePreviewDialog::BleTransport;
+        m_stack->setCurrentIndex(0);
+        updateStatusDot(BleManager::Disconnected);
+    });
+    // WiFi 取消传输
+    connect(m_connectedPage, &ConnectedPage::wifiCancelRequested, this, [this]() {
+        m_wifi->cancel();
+    });
     m_stack->addWidget(m_connectedPage);
 
     m_stack->setCurrentIndex(0);

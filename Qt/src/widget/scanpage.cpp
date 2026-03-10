@@ -72,9 +72,18 @@ void ScanPage::onScanClicked()
 {
     m_wifiDevices.clear();
     m_ble->startScan();
-    // 同时探测 WiFi 设备
-    if (m_wifi)
-        m_wifi->startProbe();
+    // 同时探测 WiFi 设备，设备名格式 tcp_gw_XXXX（IP 末两段十六进制）
+    if (m_wifi) {
+        const QString host = QStringLiteral("192.168.43.1");
+        const QStringList parts = host.split('.');
+        quint32 oct3 = (parts.size() > 2) ? parts[2].toUInt() : 0;
+        quint32 oct4 = (parts.size() > 3) ? parts[3].toUInt() : 0;
+        QString devName = QStringLiteral("tcp_gw_%1%2")
+            .arg(oct3, 2, 16, QChar('0'))
+            .arg(oct4, 2, 16, QChar('0'))
+            .toUpper();
+        m_wifi->startProbe(host, 8080, devName);
+    }
 }
 
 void ScanPage::onConnStateChanged(BleManager::ConnState state)
