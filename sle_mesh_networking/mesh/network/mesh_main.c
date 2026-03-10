@@ -798,7 +798,8 @@ static void *mesh_main_task(const char *arg)
         uint32_t scan_interval = (mesh_transport_get_neighbor_count() == 0)
                                  ? 2000 : MESH_SCAN_INTERVAL_MS;
         if (now - last_scan_ms >= scan_interval) {
-            if (mesh_transport_get_client_conn_count() < MESH_MAX_CLIENT_CONN) {
+            if (mesh_transport_get_client_conn_count() < MESH_MAX_CLIENT_CONN
+                    && !ble_gateway_fc_is_active()) {
                 sle_uart_start_scan();
             }
             last_scan_ms = now;
