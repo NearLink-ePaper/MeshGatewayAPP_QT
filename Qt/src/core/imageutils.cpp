@@ -1,6 +1,9 @@
 #include "imageutils.h"
 #include "meshprotocol.h"
 #include <QVector>
+#include <QBuffer>
+#include <QImageWriter>
+#include <QTransform>
 
 /* === 7.3" 彩色墨水屏调色板 (6色) — 与 converterTo6color 完全一致 === */
 struct EpdColor { int r, g, b; int epd_idx; };
@@ -134,17 +137,48 @@ ProcessedImage ImageUtils::processFromCropped(const QImage &cropped, int targetW
     ProcessedImage result;
     result.jpegQuality = jpegQuality;
 
-    // 4bpp RAW 模式：FS 抖动量化 → nibble 打包，无旋转
-    // 固件 EPD_display_4bpp 内部做 90° CW 旋转
-    // SRAM 606KB，480×800 仅需 192KB，完全支持
-    QByteArray nibbles;
-    QImage preview = quantizeToNibbles(scaled, nibbles);
+    // 4bpp RAW 模式：≤240×360 可放入设备缓冲区 (43200B < 48KB)
+    // FS 抖动量化 → nibble 打包，固件 EPD_display_4bpp 内部做 90° CW 旋转
+    if (targetW * targetH <= 240 * 360) {
+        QByteArray nibbles;
+        QImage preview = quantizeToNibbles(scaled, nibbles);
 
-    result.previewBitmap = preview;
-    result.imageData     = nibbles;
-    result.dataSize      = nibbles.size();
-    result.packetCount   = (nibbles.size() + MeshProtocol::IMG_PKT_PAYLOAD - 1)
+        result.previewBitmap = preview;
+        result.imageData     = nibbles;
+        result.dataSize      = nibbles.size();
+        result.packetCount   = (nibbles.size() + MeshProtocol::IMG_PKT_PAYLOAD - 1)
+                               / MeshProtocol::IMG_PKT_PAYLOAD;
+        result.imageMode     = MeshProtocol::IMG_MODE_H_LSB;
+        return result;
+    }
+
+    // JPEG 模式：大分辨率 (480×800) 原始 4bpp 超出 SRAM 限制，改用 JPEG 有损压缩
+    // 旋转 90° CW → landscape，供设备流式 JPEG 解码
+    QTransform rot;
+    rot.rotate(90);
+    QImage landscape = scaled.transformed(rot);
+
+    QByteArray jpegData;
+    QBuffer buffer(&jpegData);
+    buffer.open(QIODevice::WriteOnly);
+    QImageWriter writer(&buffer, "jpeg");
+    writer.setQuality(jpegQuality);
+    writer.write(landscape);
+    buffer.close();
+
+    // 预览：FS 抖动量化到 EPD 调色板，再旋转回 portrait
+    QImage jpegDecoded;
+    jpegDecoded.loadFromData(jpegData, "JPEG");
+    jpegDecoded = jpegDecoded.convertToFormat(QImage::Format_RGB888);
+    QImage quantized = ditherEpdPreview(jpegDecoded);
+    QTransform rotBack;
+    rotBack.rotate(-90);
+
+    result.previewBitmap = quantized.transformed(rotBack);
+    result.imageData     = jpegData;
+    result.dataSize      = jpegData.size();
+    result.packetCount   = (jpegData.size() + MeshProtocol::IMG_PKT_PAYLOAD - 1)
                            / MeshProtocol::IMG_PKT_PAYLOAD;
-    result.imageMode     = MeshProtocol::IMG_MODE_H_LSB;
+    result.imageMode     = MeshProtocol::IMG_MODE_JPEG;
     return result;
 }
