@@ -78,47 +78,47 @@ static void quantizeToNibbles(const QImage &src, QByteArray &nibbles)
     }
 }
 
-static inline int clamp255(int v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
-
 /**
- * Floyd-Steinberg 抖动 → RGB 预览图（仅用于屏幕显示）
- * 抖动后的颜色更接近人眼感知的墨水屏效果，不影响实际发送数据。
+ * NN 量化 → 轻微模糊 → RGB 预览图
+ * 与设备发送数据的算法相同（最近邻），再叠加 1 像素 box blur 模拟
+ * 墨水屏物理像素在正常观看距离下的视觉融合效果，避免 FS 抖动颗粒感。
  */
 static QImage ditherEpdPreview(const QImage &src)
 {
     int w = src.width();
     int h = src.height();
-    QVector<int> bufR(w * h), bufG(w * h), bufB(w * h);
+
+    // 第一步：最近邻量化（与发送数据完全一致）
+    QImage quantized(w, h, QImage::Format_RGB888);
     for (int y = 0; y < h; ++y) {
-        const uchar *line = src.constScanLine(y);
+        const uchar *sl = src.constScanLine(y);
+        uchar       *dl = quantized.scanLine(y);
         for (int x = 0; x < w; ++x) {
-            int i = y * w + x;
-            bufR[i] = line[x*3+0];
-            bufG[i] = line[x*3+1];
-            bufB[i] = line[x*3+2];
+            int pi = findNearestPaletteIndex(sl[x*3], sl[x*3+1], sl[x*3+2]);
+            dl[x*3+0] = (uchar)kEpdPalette[pi].r;
+            dl[x*3+1] = (uchar)kEpdPalette[pi].g;
+            dl[x*3+2] = (uchar)kEpdPalette[pi].b;
         }
     }
-    QImage out(w, h, QImage::Format_RGB888);
+
+    // 第二步：1 像素 box blur — 模拟物理像素视觉融合，柔化色块边缘
+    QImage blurred(w, h, QImage::Format_RGB888);
     for (int y = 0; y < h; ++y) {
-        uchar *dl = out.scanLine(y);
+        const uchar *prev = quantized.constScanLine(y > 0 ? y-1 : 0);
+        const uchar *curr = quantized.constScanLine(y);
+        const uchar *next = quantized.constScanLine(y+1 < h ? y+1 : h-1);
+        uchar *dl = blurred.scanLine(y);
         for (int x = 0; x < w; ++x) {
-            int i = y * w + x;
-            int oldR = clamp255(bufR[i]);
-            int oldG = clamp255(bufG[i]);
-            int oldB = clamp255(bufB[i]);
-            int pi = findNearestPaletteIndex(oldR, oldG, oldB);
-            int newR = kEpdPalette[pi].r, newG = kEpdPalette[pi].g, newB = kEpdPalette[pi].b;
-            dl[x*3+0] = (uchar)newR; dl[x*3+1] = (uchar)newG; dl[x*3+2] = (uchar)newB;
-            int eR = oldR - newR, eG = oldG - newG, eB = oldB - newB;
-            if (x+1 < w) { bufR[i+1]+=eR*7/16; bufG[i+1]+=eG*7/16; bufB[i+1]+=eB*7/16; }
-            if (y+1 < h) {
-                if (x>0) { bufR[i+w-1]+=eR*3/16; bufG[i+w-1]+=eG*3/16; bufB[i+w-1]+=eB*3/16; }
-                bufR[i+w]+=eR*5/16; bufG[i+w]+=eG*5/16; bufB[i+w]+=eB*5/16;
-                if (x+1<w) { bufR[i+w+1]+=eR/16; bufG[i+w+1]+=eG/16; bufB[i+w+1]+=eB/16; }
+            int x0 = (x > 0 ? x-1 : 0) * 3, x1 = x*3, x2 = (x+1 < w ? x+1 : w-1) * 3;
+            for (int c = 0; c < 3; ++c) {
+                int sum = prev[x0+c] + prev[x1+c] + prev[x2+c]
+                        + curr[x0+c] + curr[x1+c] + curr[x2+c]
+                        + next[x0+c] + next[x1+c] + next[x2+c];
+                dl[x*3+c] = (uchar)(sum / 9);
             }
         }
     }
-    return out;
+    return blurred;
 }
 
 QList<ImageResolution> ImageUtils::resolutions()
