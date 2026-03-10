@@ -15,7 +15,7 @@
 #include <string.h>
 
 #define SOCK_LOG    "[wifi sock]"
-#define SERVER_TASK_STACK   0x1000  /* 4KB: waterline=0x498(1.2KB), 4KB 留 3x 余量。释放 4KB 堆给 WiFi+BT OAL */
+#define SERVER_TASK_STACK   0x1800  /* 6KB: waterline=0x498(1.2KB), lwip recv/send 需要额外栈空间。释放 2KB 堆给 WiFi+BT OAL */
 #define SERVER_TASK_PRIO    (osPriority_t)(15)
 
 /**
