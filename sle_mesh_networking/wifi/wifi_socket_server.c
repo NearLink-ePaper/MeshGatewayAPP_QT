@@ -59,10 +59,12 @@ static void handle_client(int client_fd)
     uint8_t *img_buf;
 
     /* 读第一字节: 判断是探测(0xFE)、命令(0xFD)还是图片传输(0xAA) */
+    printf("%s waiting first byte\r\n", SOCK_LOG);
     {
         int n = lwip_recv(client_fd, &header[0], 1, 0);
+        printf("%s recv n=%d byte=0x%02X\r\n", SOCK_LOG, n, n > 0 ? header[0] : 0xFF);
         if (n <= 0) {
-            printf("%s header recv failed\r\n", SOCK_LOG);
+            printf("%s header recv failed (errno=%d)\r\n", SOCK_LOG, n);
             return;
         }
     }
