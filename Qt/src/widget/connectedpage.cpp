@@ -673,9 +673,15 @@ void ConnectedPage::setWifiMode(const WifiDevice &device)
     m_queryTopoBtn->setVisible(true);
     m_queryTopoBtn->setText(tr("查询节点"));
 
+    // 从设备名称解析网关 Mesh 地址: "sle_gw_006E" → 0x006E
+    bool ok = false;
+    quint16 gwAddr = device.name.right(4).toUShort(&ok, 16);
+    if (!ok) gwAddr = 0x0000;
+    m_wifiGwAddr = gwAddr;
+
     // 初始只放一张"网关本地"卡片（hops=0），用户可点击后发图给网关本地 ePaper
     m_nodes.clear();
-    m_nodes.append(MeshNode(0x0000, 0));
+    m_nodes.append(MeshNode(gwAddr, 0));
     rebuildNodeList();
 }
 
@@ -683,9 +689,9 @@ void ConnectedPage::onWifiTopologyReceived(const QList<MeshNode> &nodes)
 {
     // 保留 hops=0 的本地网关节点，追加查询到的 Mesh 节点
     m_nodes.clear();
-    m_nodes.append(MeshNode(0x0000, 0));   /* 网关本地 ePaper */
+    m_nodes.append(MeshNode(m_wifiGwAddr, 0));   /* 网关本地 ePaper */
     for (const MeshNode &n : nodes) {
-        if (n.addr != 0x0000) {
+        if (n.addr != m_wifiGwAddr) {
             m_nodes.append(n);
         }
     }

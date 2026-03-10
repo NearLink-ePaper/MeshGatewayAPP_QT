@@ -127,6 +127,7 @@ private:
     QSet<quint16>      m_multicastAddrs;
 
     quint16            m_gwAddr = 0;
+    quint16            m_wifiGwAddr = 0;   /* WiFi 模式下从设备名解析的网关 Mesh 地址 */
     QList<MeshNode>    m_nodes;
     int                m_selectedNodeIndex = -1;
 };

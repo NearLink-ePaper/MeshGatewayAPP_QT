@@ -86,7 +86,7 @@ private slots:
     void onProbeTimeout();
     void onTopoConnected();
     void onTopoReadyRead();
-    void onTopoError();
+    void onTopoError(QAbstractSocket::SocketError err);
     void onTopoTimeout();
 
 private:
@@ -111,6 +111,7 @@ private:
     // TOPO 查询相关
     QTcpSocket *m_topoSocket  = nullptr;
     QTimer      m_topoTimeout;
+    QByteArray  m_topoBuf;
 };
 
 #endif // SOCKETTRANSPORT_H

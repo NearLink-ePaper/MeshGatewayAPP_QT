@@ -273,6 +273,7 @@ void SocketTransport::queryTopologyWifi()
     connect(&m_topoTimeout, &QTimer::timeout,
             this, &SocketTransport::onTopoTimeout, Qt::UniqueConnection);
 
+    m_topoBuf.clear();
     m_topoTimeout.start();
     m_topoSocket->connectToHost(m_host, m_port);
     qDebug() << "[WiFi TOPO] connecting to" << m_host << ":" << m_port;
@@ -286,13 +287,10 @@ void SocketTransport::onTopoConnected()
     qDebug() << "[WiFi TOPO] command sent";
 }
 
-void SocketTransport::onTopoReadyRead()
+static QList<MeshNode> parseTopoBuf(const QByteArray &raw)
 {
-    if (!m_topoSocket) return;
-    QByteArray raw = m_topoSocket->readAll();
-    if (raw.isEmpty()) return;
-
     QList<MeshNode> nodes;
+    if (raw.isEmpty()) return nodes;
     int count = static_cast<quint8>(raw[0]);
     for (int i = 0; i < count && (1 + i * 3 + 2) < raw.size(); ++i) {
         quint16 addr = (static_cast<quint8>(raw[1 + i*3]) << 8)
@@ -300,7 +298,16 @@ void SocketTransport::onTopoReadyRead()
         quint8  hops =  static_cast<quint8>(raw[3 + i*3]);
         nodes.append(MeshNode(addr, hops));
     }
+    return nodes;
+}
 
+void SocketTransport::onTopoReadyRead()
+{
+    if (!m_topoSocket) return;
+    m_topoBuf += m_topoSocket->readAll();
+    if (m_topoBuf.isEmpty()) return;
+
+    QList<MeshNode> nodes = parseTopoBuf(m_topoBuf);
     m_topoTimeout.stop();
     qDebug() << "[WiFi TOPO]" << nodes.size() << "nodes received";
     emit wifiTopologyReceived(nodes);
@@ -309,10 +316,27 @@ void SocketTransport::onTopoReadyRead()
     m_topoSocket->abort();
     m_topoSocket->deleteLater();
     m_topoSocket = nullptr;
+    m_topoBuf.clear();
 }
 
-void SocketTransport::onTopoError()
+void SocketTransport::onTopoError(QAbstractSocket::SocketError err)
 {
+    /* RemoteHostClosedError: 服务器正常发完数据后关闭连接，追加剩余字节再解析 */
+    if (err == QAbstractSocket::RemoteHostClosedError && m_topoSocket) {
+        m_topoBuf += m_topoSocket->readAll();
+        if (!m_topoBuf.isEmpty()) {
+            QList<MeshNode> nodes = parseTopoBuf(m_topoBuf);
+            m_topoTimeout.stop();
+            qDebug() << "[WiFi TOPO] remote closed, parsed" << nodes.size() << "nodes";
+            emit wifiTopologyReceived(nodes);
+            m_topoSocket->disconnect(this);
+            m_topoSocket->abort();
+            m_topoSocket->deleteLater();
+            m_topoSocket = nullptr;
+            m_topoBuf.clear();
+            return;
+        }
+    }
     qDebug() << "[WiFi TOPO] error:" << (m_topoSocket ? m_topoSocket->errorString() : QString());
     m_topoTimeout.stop();
     emit wifiTopologyReceived({});
@@ -322,6 +346,7 @@ void SocketTransport::onTopoError()
         m_topoSocket->deleteLater();
         m_topoSocket = nullptr;
     }
+    m_topoBuf.clear();
 }
 
 void SocketTransport::onTopoTimeout()
