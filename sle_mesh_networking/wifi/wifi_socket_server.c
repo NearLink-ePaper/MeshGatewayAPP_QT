@@ -58,7 +58,7 @@ static void handle_client(int client_fd)
     uint32_t data_size;
     uint8_t *img_buf;
 
-    /* 读第一字节: 判断是探测 (0xFE) 还是真实传输 (0xAA) */
+    /* 读第一字节: 判断是探测(0xFE)、命令(0xFD)还是图片传输(0xAA) */
     {
         int n = lwip_recv(client_fd, &header[0], 1, 0);
         if (n <= 0) {
@@ -66,24 +66,51 @@ static void handle_client(int client_fd)
             return;
         }
     }
+
+    /* ── 0xFE: 探测，回复网关名称 ── */
     if (header[0] == WIFI_PROBE_MAGIC) {
-        /* WiFi 探测: 回复网关名称后关闭 */
         lwip_send(client_fd, g_gw_name, (int)strlen(g_gw_name), 0);
         printf("%s probe: name='%s'\r\n", SOCK_LOG, g_gw_name);
         return;
     }
+
+    /* ── 0xFD: 命令帧，读取子命令 ── */
+    if (header[0] == WIFI_CMD_MAGIC) {
+        uint8_t subcmd = 0;
+        if (lwip_recv(client_fd, &subcmd, 1, 0) <= 0) return;
+        if (subcmd == WIFI_CMD_TOPO_QUERY) {
+            /* 启动 TOPO 查询，等待收集完成 */
+            ble_gateway_start_wifi_topo();
+            osDelay(3500);  /* 等待 3.5s 收集响应 */
+            uint16_t addrs[16];
+            uint8_t  hops_arr[16];
+            uint8_t  count = ble_gateway_read_wifi_topo(addrs, hops_arr, 16);
+            /* 回复: [count(1)] [addr_hi addr_lo hops(1)] ... */
+            uint8_t resp_buf[1 + 16 * 3];
+            resp_buf[0] = count;
+            for (uint8_t i = 0; i < count; i++) {
+                resp_buf[1 + i * 3 + 0] = (uint8_t)(addrs[i] >> 8);
+                resp_buf[1 + i * 3 + 1] = (uint8_t)(addrs[i] & 0xFF);
+                resp_buf[1 + i * 3 + 2] = hops_arr[i];
+            }
+            lwip_send(client_fd, resp_buf, (int)(1 + count * 3), 0);
+            printf("%s TOPO: %d nodes\r\n", SOCK_LOG, count);
+        }
+        return;
+    }
+
+    /* ── 0xAA: 图片传输 ── */
     if (header[0] != WIFI_IMG_MAGIC_0) {
         printf("%s bad magic[0]: %02X\r\n", SOCK_LOG, header[0]);
         resp = WIFI_IMG_RESP_FAIL;
         lwip_send(client_fd, &resp, 1, 0);
         return;
     }
-    /* 读剩余 11 字节头部 */
+    /* 读剩余 13 字节头部 (新协议头共 14B) */
     if (recv_exact(client_fd, &header[1], WIFI_IMG_HEADER_SIZE - 1) != 0) {
         printf("%s header recv failed\r\n", SOCK_LOG);
         return;
     }
-    /* 校验 magic[1] */
     if (header[1] != WIFI_IMG_MAGIC_1) {
         printf("%s bad magic[1]: %02X\r\n", SOCK_LOG, header[1]);
         resp = WIFI_IMG_RESP_FAIL;
@@ -91,25 +118,19 @@ static void handle_client(int client_fd)
         return;
     }
 
-    /* 解析头 */
-    width     = ((uint16_t)header[2] << 8) | header[3];
-    height    = ((uint16_t)header[4] << 8) | header[5];
-    mode      = header[6];
-    /* header[7] reserved */
-    data_size = ((uint32_t)header[8]  << 24) | ((uint32_t)header[9]  << 16) |
-                ((uint32_t)header[10] << 8)  | header[11];
+    /* 解析 14 字节协议头:
+     * [0-1] magic  [2-3] width  [4-5] height  [6] mode
+     * [7] dst_hi   [8] dst_lo   [9] reserved   [10-13] data_size */
+    width    = ((uint16_t)header[2] << 8) | header[3];
+    height   = ((uint16_t)header[4] << 8) | header[5];
+    mode     = header[6];
+    uint16_t dst_addr = ((uint16_t)header[7] << 8) | header[8];
+    /* header[9] reserved */
+    data_size = ((uint32_t)header[10] << 24) | ((uint32_t)header[11] << 16) |
+                ((uint32_t)header[12] << 8)  | header[13];
 
-    printf("%s header: %ux%u mode=%u size=%lu\r\n",
-           SOCK_LOG, width, height, mode, (unsigned long)data_size);
-
-    /* 检查缓冲区大小 */
-    if (data_size > IMG_RX_BUF_SIZE) {
-        printf("%s data_size %lu > buf %d, OOM\r\n",
-               SOCK_LOG, (unsigned long)data_size, IMG_RX_BUF_SIZE);
-        resp = WIFI_IMG_RESP_OOM;
-        lwip_send(client_fd, &resp, 1, 0);
-        return;
-    }
+    printf("%s header: %ux%u mode=%u dst=0x%04X size=%lu\r\n",
+           SOCK_LOG, width, height, mode, dst_addr, (unsigned long)data_size);
 
     /* 互斥检查: BLE 已连接时拒绝 WiFi 传图 */
     if (ble_gateway_is_connected()) {
@@ -119,7 +140,55 @@ static void handle_client(int client_fd)
         return;
     }
 
-    /* 等待 image_receiver 空闲 */
+    /* ── dst_addr != 0xFFFF: Mesh 转发路径 ── */
+    if (dst_addr != WIFI_IMG_DST_LOCAL) {
+        if (data_size > ble_gateway_wifi_img_buf_size()) {
+            printf("%s size %lu > cache OOM\r\n", SOCK_LOG, (unsigned long)data_size);
+            resp = WIFI_IMG_RESP_OOM;
+            lwip_send(client_fd, &resp, 1, 0);
+            return;
+        }
+        /* 直接接收到 g_img_cache.buf */
+        img_buf = ble_gateway_get_wifi_img_buf();
+        if (recv_exact(client_fd, img_buf, data_size) != 0) {
+            printf("%s mesh data recv failed\r\n", SOCK_LOG);
+            resp = WIFI_IMG_RESP_FAIL;
+            lwip_send(client_fd, &resp, 1, 0);
+            return;
+        }
+        /* 设置 FC 元数据并触发传输 */
+        if (ble_gateway_wifi_setup_fc(dst_addr, data_size, width, height, mode) != 0) {
+            printf("%s FC busy/fail\r\n", SOCK_LOG);
+            resp = WIFI_IMG_RESP_FAIL;
+            lwip_send(client_fd, &resp, 1, 0);
+            return;
+        }
+        /* 等待 FC 完成 (轮询, 最长 120s) */
+        uint32_t deadline = osKernelGetTickCount() + 120000U;
+        while (ble_gateway_wifi_get_fc_result() < 0) {
+            osDelay(200);
+            if (osKernelGetTickCount() > deadline) {
+                printf("%s mesh FC timeout\r\n", SOCK_LOG);
+                resp = WIFI_IMG_RESP_FAIL;
+                lwip_send(client_fd, &resp, 1, 0);
+                return;
+            }
+            uapi_watchdog_kick();
+        }
+        resp = (ble_gateway_wifi_get_fc_result() == 0) ? WIFI_IMG_RESP_OK : WIFI_IMG_RESP_FAIL;
+        printf("%s mesh FC done: %s\r\n", SOCK_LOG, resp == WIFI_IMG_RESP_OK ? "OK" : "FAIL");
+        lwip_send(client_fd, &resp, 1, 0);
+        return;
+    }
+
+    /* ── dst_addr == 0xFFFF: 本地 ePaper 显示路径 ── */
+    if (data_size > IMG_RX_BUF_SIZE) {
+        printf("%s data_size %lu > buf %d, OOM\r\n",
+               SOCK_LOG, (unsigned long)data_size, IMG_RX_BUF_SIZE);
+        resp = WIFI_IMG_RESP_OOM;
+        lwip_send(client_fd, &resp, 1, 0);
+        return;
+    }
     {
         const img_rx_info_t *info = image_receiver_get_info();
         if (info->state == IMG_STATE_RECEIVING) {
@@ -129,8 +198,6 @@ static void handle_client(int client_fd)
             return;
         }
     }
-
-    /* 直接接收到 image_receiver 缓冲区 */
     img_buf = image_receiver_get_buffer_writable();
     if (recv_exact(client_fd, img_buf, data_size) != 0) {
         printf("%s data recv failed\r\n", SOCK_LOG);
@@ -138,16 +205,10 @@ static void handle_client(int client_fd)
         lwip_send(client_fd, &resp, 1, 0);
         return;
     }
-
     printf("%s received %lu bytes OK\r\n", SOCK_LOG, (unsigned long)data_size);
-
-    /* 触发 ePaper 显示 */
     epaper_trigger_mesh_image(img_buf, width, height, mode, (uint16_t)data_size);
-
-    /* 回复成功 */
     resp = WIFI_IMG_RESP_OK;
     lwip_send(client_fd, &resp, 1, 0);
-
     printf("%s triggered ePaper\r\n", SOCK_LOG);
 }
 

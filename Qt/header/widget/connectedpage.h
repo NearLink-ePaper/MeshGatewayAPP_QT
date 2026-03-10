@@ -68,6 +68,8 @@ signals:
     void multicastImageRequested(const QList<quint16> &targets);
     void wifiDisconnectRequested();
     void wifiCancelRequested();
+    /** WiFi 模式下用户点击"查询节点"按钮 */
+    void wifiTopoQueryRequested();
 
 public slots:
     void onMessageReceived(const UpstreamMessage &msg);
@@ -76,6 +78,8 @@ public slots:
     void updateWifiProgress(int bytesSent, int totalBytes);
     /** WiFi 传输状态变化 */
     void onWifiStateChanged(SocketTransport::State state, const QString &msg = {});
+    /** WiFi TOPO 查询结果，刷新节点列表 */
+    void onWifiTopologyReceived(const QList<MeshNode> &nodes);
 
 private slots:
     void onQueryTopoClicked();

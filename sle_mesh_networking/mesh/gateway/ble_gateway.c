@@ -53,6 +53,15 @@
 volatile bool g_mesh_log_suppress = false;
 
 /* =====================================================================
+ *  WiFi FC 转发支持
+ *  WiFi 服务器任务通过 ble_gateway_wifi_setup_fc() 填充 g_img_cache 并设置
+ *  g_wifi_fc_pending，主循环 ble_gateway_img_tick() 检测到后调用 fc_start()。
+ *  结果通过 g_wifi_fc_result 返回给 WiFi 任务 (轮询)。
+ * ===================================================================== */
+static volatile bool  g_wifi_fc_pending = false;  /**< WiFi 任务设置，主循环清除 */
+static volatile int8_t g_wifi_fc_result  = -1;    /**< -1=进行中, 0=OK, 1=FAIL */
+
+/* =====================================================================
  *  基础配置宏定义
  *  包含日志标签、BLE 广播参数、GATT UUID 及通用长度常量。
  *  根据实际硬件和应用场景调整广播间隔、服务数量等参数。
@@ -1264,6 +1273,12 @@ void ble_gateway_img_tick(void)
         }
     }
 
+    /* WiFi FC 触发: WiFi 任务写完图片并设置 pending 标志后，由此处启动 FC */
+    if (g_wifi_fc_pending && g_fc.state == FC_IDLE) {
+        g_wifi_fc_pending = false;
+        fc_start();
+    }
+
     if (g_fc.state == FC_IDLE) return;
 
     uint32_t now = osal_get_tick_ms();
@@ -1502,6 +1517,7 @@ void ble_gateway_img_tick(void)
                     sle_uart_resume_scan();
                     fc_stop_turbo_now();
                     g_img_cache.active = 0;
+                    if (g_wifi_fc_result == -1) g_wifi_fc_result = 1;  /* WiFi FC 失败 */
                     /* F29d: 通知 APP 传输超时，防止 APP 永久等待 RESULT */
                     if (g_gw_connected && g_gw_notify_handle != 0) {
                         uint8_t fail_frame[5] = { 0xAA, 0x86,
@@ -1642,12 +1658,13 @@ void ble_gateway_img_tick(void)
                 g_fc.retry_round++;
                 if (g_fc.retry_round > IMG_GW_MAX_RETRY) {
                     osal_printk("%s FC give up after %d rounds\r\n",
-                                BLE_GW_LOG, g_fc.retry_round);
+                            BLE_GW_LOG, g_fc.retry_round);
                     g_fc.state = FC_IDLE;
                     g_mesh_log_suppress = false;
                     sle_uart_resume_scan();
                     fc_stop_turbo_now();
                     g_img_cache.active = 0;
+                    if (g_wifi_fc_result == -1) g_wifi_fc_result = 1;  /* WiFi FC 失败 */
                 } else {
                     g_fc.state = FC_SEND_END;
                     g_fc.state_tick = now;
@@ -2015,6 +2032,7 @@ int ble_gateway_send_image_response(uint16_t src_addr, const uint8_t *data, uint
             sle_uart_resume_scan();  /* P5: 传输完成，恢复 SLE 扫描 */
             fc_stop_turbo();         /* O2: 恢复正常连接间隔 */
             g_img_cache.active = 0;
+            if (g_wifi_fc_result == -1) g_wifi_fc_result = (status == 0x00) ? 0 : 1;  /* WiFi FC 结果 */
         } else {
             /* F27: 重复 RESULT → 不转发给手机, 防止 APP 收到多次 "传输成功" */
             osal_printk("%s IMG DONE dup ignored (already IDLE)\r\n", BLE_GW_LOG);
@@ -2476,6 +2494,103 @@ static void gw_pair_result_cbk(uint16_t conn_id, const bd_addr_t *addr, errcode_
 {
     (void)conn_id; (void)addr; (void)status;
 }
+
+/* ===========================================================================
+ *  WiFi 支持 API 实现
+ * =========================================================================== */
+
+void ble_gateway_start_wifi_topo(void)
+{
+    /* 复用与 BLE 路径相同的初始化逻辑 */
+    if (g_topo_collect.active) return;
+    g_topo_collect.count = 0;
+
+    /* 预填充直连邻居（hops=1）*/
+    uint16_t nbr_addrs[16];
+    uint8_t nbr_count = mesh_transport_get_all_neighbor_addrs(nbr_addrs, 16);
+    for (uint8_t i = 0; i < nbr_count; i++) topo_collect_add(nbr_addrs[i], 1);
+
+    /* 预填充路由表 */
+    uint16_t rt_addrs[32];
+    uint8_t  rt_hops[32];
+    uint8_t  rt_count = mesh_route_get_all_destinations(rt_addrs, rt_hops, 32);
+    for (uint8_t i = 0; i < rt_count; i++) topo_collect_add(rt_addrs[i], rt_hops[i]);
+
+    /* F17 格式 TOPO_REQ: [0xFE, 0x01, GW_HI, GW_LO] — 节点单播回复网关 */
+    uint16_t self_addr = mesh_get_my_addr();
+    uint8_t topo_req[4] = { TOPO_MAGIC, TOPO_REQ_CMD,
+                            (uint8_t)(self_addr >> 8), (uint8_t)(self_addr & 0xFF) };
+    mesh_broadcast(topo_req, sizeof(topo_req));
+
+    g_topo_collect.active     = 1;
+    g_topo_collect.start_time = osal_get_tick_ms();
+    g_topo_collect.last_resp_tick = 0;
+    g_topo_collect.resp_count = 0;
+    g_topo_collect.retry_done = 0;
+    osal_printk("%s WiFi TOPO started, pre-nbr=%d rt=%d\r\n",
+                BLE_GW_LOG, nbr_count, rt_count);
+}
+
+uint8_t ble_gateway_read_wifi_topo(uint16_t *addrs, uint8_t *hops, uint8_t max)
+{
+    g_topo_collect.active = 0;
+    uint8_t count = (g_topo_collect.count < max) ? g_topo_collect.count : max;
+    for (uint8_t i = 0; i < count; i++) {
+        addrs[i] = g_topo_collect.nodes[i];
+        hops[i]  = g_topo_collect.hops[i];
+    }
+    return count;
+}
+
+uint8_t *ble_gateway_get_wifi_img_buf(void)
+{
+    return g_img_cache.buf;
+}
+
+uint32_t ble_gateway_wifi_img_buf_size(void)
+{
+    return (uint32_t)IMG_GW_CACHE_SIZE;
+}
+
+int ble_gateway_wifi_setup_fc(uint16_t dst_addr, uint32_t data_size,
+                               uint16_t w, uint16_t h, uint8_t mode)
+{
+    if (g_fc.state != FC_IDLE) return -1;
+    if (g_img_cache.active)   return -2;
+    if (data_size > IMG_GW_CACHE_SIZE) return -3;
+
+    /* 初始化缓存元数据（图片数据已由调用方写入 g_img_cache.buf，不清 buf）*/
+    (void)memset_s(&g_img_cache, sizeof(g_img_cache),
+                   0, sizeof(g_img_cache) - sizeof(g_img_cache.buf));
+    g_img_cache.dst_addr     = dst_addr;
+    g_img_cache.total_bytes  = (uint16_t)data_size;
+    g_img_cache.fc_pkt_count = (uint16_t)((data_size + IMG_FC_PKT_PAYLOAD - 1) / IMG_FC_PKT_PAYLOAD);
+    g_img_cache.pkt_count    = g_img_cache.fc_pkt_count;
+    g_img_cache.xfer_mode    = 0;   /* FAST 模式 */
+    g_img_cache.active       = 1;
+
+    /* 构造 start_payload: [TOTAL(2) PKT(2) W(2) H(2) MODE(1) XFER(1)] */
+    g_img_cache.start_payload[0] = (uint8_t)(data_size >> 8);
+    g_img_cache.start_payload[1] = (uint8_t)(data_size & 0xFF);
+    g_img_cache.start_payload[2] = (uint8_t)(g_img_cache.fc_pkt_count >> 8);
+    g_img_cache.start_payload[3] = (uint8_t)(g_img_cache.fc_pkt_count & 0xFF);
+    g_img_cache.start_payload[4] = (uint8_t)(w >> 8);
+    g_img_cache.start_payload[5] = (uint8_t)(w & 0xFF);
+    g_img_cache.start_payload[6] = (uint8_t)(h >> 8);
+    g_img_cache.start_payload[7] = (uint8_t)(h & 0xFF);
+    g_img_cache.start_payload[8] = mode;
+    g_img_cache.start_payload[9] = 0x00;  /* XFER=FAST */
+    g_img_cache.start_len = 10;
+
+    g_wifi_fc_result  = -1;
+    g_wifi_fc_pending = true;  /* 通知主循环 tick 启动 FC */
+    osal_printk("%s WiFi FC setup: dst=0x%04X size=%lu W=%d H=%d mode=%d pkts=%d\r\n",
+                BLE_GW_LOG, dst_addr, (unsigned long)data_size, w, h, mode,
+                g_img_cache.fc_pkt_count);
+    return 0;
+}
+
+int8_t ble_gateway_wifi_get_fc_result(void) { return g_wifi_fc_result; }
 
 /* ===========================================================================
  * BLE 网关初始化

@@ -338,8 +338,13 @@ void ConnectedPage::onMessageReceived(const UpstreamMessage &msg)
 
 void ConnectedPage::onQueryTopoClicked()
 {
-    m_ble->queryTopology();
-    addLog(QString::fromUtf8("\xe2\x86\x92 ") + tr("查询拓扑"));
+    if (m_wifiMode) {
+        emit wifiTopoQueryRequested();
+        addLog(QString::fromUtf8("\xe2\x86\x92 ") + tr("[WiFi] 查询节点..."));
+    } else {
+        m_ble->queryTopology();
+        addLog(QString::fromUtf8("\xe2\x86\x92 ") + tr("查询拓扑"));
+    }
 }
 
 void ConnectedPage::onDisconnectClicked()
@@ -651,6 +656,7 @@ void ConnectedPage::resetMode()
 {
     m_wifiMode = false;
     m_queryTopoBtn->setVisible(true);
+    m_queryTopoBtn->setText(tr("查询拓扑"));
     m_progressContainer->setVisible(false);
 }
 
@@ -663,11 +669,26 @@ void ConnectedPage::setWifiMode(const WifiDevice &device)
         QStringLiteral("%1:%2  [WiFi]").arg(device.host).arg(device.port));
     m_debugLabel->setText(tr("收到: %1\n%2:%3  [WiFi]").arg(device.name).arg(device.host).arg(device.port));
 
-    // WiFi 模式不需要查询 BLE 拓扑
-    m_queryTopoBtn->setVisible(false);
+    // WiFi 模式也支持查询节点
+    m_queryTopoBtn->setVisible(true);
+    m_queryTopoBtn->setText(tr("查询节点"));
 
-    // 构造一个代表该 WiFi 设备的"节点"（addr=0, hops=0），可点击后发送图片
+    // 初始只放一张"网关本地"卡片（hops=0），用户可点击后发图给网关本地 ePaper
     m_nodes.clear();
     m_nodes.append(MeshNode(0x0000, 0));
     rebuildNodeList();
+}
+
+void ConnectedPage::onWifiTopologyReceived(const QList<MeshNode> &nodes)
+{
+    // 保留 hops=0 的本地网关节点，追加查询到的 Mesh 节点
+    m_nodes.clear();
+    m_nodes.append(MeshNode(0x0000, 0));   /* 网关本地 ePaper */
+    for (const MeshNode &n : nodes) {
+        if (n.addr != 0x0000) {
+            m_nodes.append(n);
+        }
+    }
+    rebuildNodeList();
+    addLog(tr("[WiFi] 发现 %1 个 Mesh 节点").arg(nodes.size()));
 }

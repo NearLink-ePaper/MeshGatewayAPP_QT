@@ -6,15 +6,16 @@
 #include <QByteArray>
 #include <QTimer>
 #include <QString>
+#include <QList>
+#include "meshprotocol.h"
 
 /**
  * WiFi Socket 图传客户端
  * 通过 TCP 直连嵌入式设备 SoftAP (192.168.43.1:8080) 发送图片
- *
- * 协议格式:
- *   [Header 12B] magic(0xAA55) + width(2) + height(2) + mode(1) + reserved(1) + data_size(4)
- *   [Data N bytes] 图片原始数据
- *   设备回复: 1 byte (0=OK, 1=OOM, 2=fail)
+ *   协议格式:
+ *   [Header 14B] magic(0xAA55) + width(2) + height(2) + mode(1) + dst_hi(1) + dst_lo(1) + reserved(1) + data_size(4)
+ *   [Data N bytes] 图片原始数据  (dst=0xFFFF: 本地显示; 其他: Mesh转发)
+ *   设备回复: 1 byte (0=OK, 1=OOM, 2=fail, 3=BUSY)
  */
 /** WiFi 发现的设备信息 */
 struct WifiDevice {
@@ -37,8 +38,14 @@ public:
     /** 设备 IP 和端口 */
     void setHost(const QString &ip, quint16 port = 8080);
 
-    /** 发送图片数据 */
-    bool sendImage(const QByteArray &data, int width, int height, quint8 mode);
+    /** 发送图片数据
+     *  dstAddr=0xFFFF: 网关本地显示; 其他: Mesh转发到指定节点 */
+    bool sendImage(const QByteArray &data, int width, int height, quint8 mode,
+                   quint16 dstAddr = 0xFFFF);
+
+    /** 异步查询 WiFi 网关下的 Mesh 节点拓扑
+     *  结果通过 wifiTopologyReceived 信号返回 */
+    void queryTopologyWifi();
 
     /** 当前状态 */
     State state() const { return m_state; }
@@ -64,6 +71,8 @@ signals:
     void wifiDeviceFound(const WifiDevice &device);
     /** 探测完成（无论是否找到） */
     void probeFinished();
+    /** WiFi TOPO 查询完成，返回节点列表 */
+    void wifiTopologyReceived(const QList<MeshNode> &nodes);
 
 private slots:
     void onConnected();
@@ -75,6 +84,10 @@ private slots:
     void onProbeReadyRead();
     void onProbeError();
     void onProbeTimeout();
+    void onTopoConnected();
+    void onTopoReadyRead();
+    void onTopoError();
+    void onTopoTimeout();
 
 private:
     void setState(State s);
@@ -94,6 +107,10 @@ private:
     QTcpSocket *m_probeSocket = nullptr;
     QTimer      m_probeTimeout;
     WifiDevice  m_probeDevice;
+
+    // TOPO 查询相关
+    QTcpSocket *m_topoSocket  = nullptr;
+    QTimer      m_topoTimeout;
 };
 
 #endif // SOCKETTRANSPORT_H

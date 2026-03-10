@@ -2,10 +2,13 @@
 #include <QDataStream>
 #include <QDebug>
 
-static constexpr quint8  MAGIC_0 = 0xAA;
-static constexpr quint8  MAGIC_1 = 0x55;
-static constexpr int     HEADER_SIZE = 12;
-static constexpr int     TIMEOUT_MS  = 15000;
+static constexpr quint8  MAGIC_0      = 0xAA;
+static constexpr quint8  MAGIC_1      = 0x55;
+static constexpr int     HEADER_SIZE  = 14;    /* 14B: magic(2)+w(2)+h(2)+mode(1)+dst(2)+rsv(1)+size(4) */
+static constexpr int     TIMEOUT_MS   = 15000;
+static constexpr int     TOPO_TIMEOUT = 5500;  /* TOPO: 3.5s 固件收集 + 余量 */
+static constexpr quint8  CMD_MAGIC    = 0xFD;
+static constexpr quint8  CMD_TOPO     = 0x03;
 
 SocketTransport::SocketTransport(QObject *parent)
     : QObject(parent)
@@ -25,25 +28,28 @@ void SocketTransport::setHost(const QString &ip, quint16 port)
     m_port = port;
 }
 
-bool SocketTransport::sendImage(const QByteArray &data, int width, int height, quint8 mode)
+bool SocketTransport::sendImage(const QByteArray &data, int width, int height,
+                                quint8 mode, quint16 dstAddr)
 {
     if (isBusy()) return false;
 
-    /* 构建协议头 + 数据 */
+    /* 构建 14 字节协议头: magic(2)+w(2)+h(2)+mode(1)+dst_hi(1)+dst_lo(1)+rsv(1)+size(4) */
     QByteArray header(HEADER_SIZE, '\0');
-    header[0] = static_cast<char>(MAGIC_0);
-    header[1] = static_cast<char>(MAGIC_1);
-    header[2] = static_cast<char>((width >> 8) & 0xFF);
-    header[3] = static_cast<char>(width & 0xFF);
-    header[4] = static_cast<char>((height >> 8) & 0xFF);
-    header[5] = static_cast<char>(height & 0xFF);
-    header[6] = static_cast<char>(mode);
-    header[7] = 0; /* reserved */
+    header[0]  = static_cast<char>(MAGIC_0);
+    header[1]  = static_cast<char>(MAGIC_1);
+    header[2]  = static_cast<char>((width  >> 8) & 0xFF);
+    header[3]  = static_cast<char>(width  & 0xFF);
+    header[4]  = static_cast<char>((height >> 8) & 0xFF);
+    header[5]  = static_cast<char>(height & 0xFF);
+    header[6]  = static_cast<char>(mode);
+    header[7]  = static_cast<char>((dstAddr >> 8) & 0xFF); /* dst_hi */
+    header[8]  = static_cast<char>(dstAddr & 0xFF);         /* dst_lo */
+    header[9]  = 0; /* reserved */
     quint32 sz = static_cast<quint32>(data.size());
-    header[8]  = static_cast<char>((sz >> 24) & 0xFF);
-    header[9]  = static_cast<char>((sz >> 16) & 0xFF);
-    header[10] = static_cast<char>((sz >> 8) & 0xFF);
-    header[11] = static_cast<char>(sz & 0xFF);
+    header[10] = static_cast<char>((sz >> 24) & 0xFF);
+    header[11] = static_cast<char>((sz >> 16) & 0xFF);
+    header[12] = static_cast<char>((sz >> 8)  & 0xFF);
+    header[13] = static_cast<char>(sz & 0xFF);
 
     m_sendBuf = header + data;
     m_totalBytes = m_sendBuf.size();
@@ -244,4 +250,88 @@ void SocketTransport::onProbeTimeout()
     qDebug() << "[WiFi probe] timeout";
     emit probeFinished();
     stopProbe();
+}
+
+// ─── WiFi TOPO 查询 ──────────────────────────────────────────────────────────
+
+void SocketTransport::queryTopologyWifi()
+{
+    if (m_topoSocket) {
+        m_topoSocket->disconnect(this);
+        m_topoSocket->abort();
+        m_topoSocket->deleteLater();
+        m_topoSocket = nullptr;
+    }
+
+    m_topoSocket = new QTcpSocket(this);
+    connect(m_topoSocket, &QTcpSocket::connected,     this, &SocketTransport::onTopoConnected);
+    connect(m_topoSocket, &QTcpSocket::readyRead,     this, &SocketTransport::onTopoReadyRead);
+    connect(m_topoSocket, &QTcpSocket::errorOccurred, this, &SocketTransport::onTopoError);
+
+    m_topoTimeout.setSingleShot(true);
+    m_topoTimeout.setInterval(TOPO_TIMEOUT);
+    connect(&m_topoTimeout, &QTimer::timeout,
+            this, &SocketTransport::onTopoTimeout, Qt::UniqueConnection);
+
+    m_topoTimeout.start();
+    m_topoSocket->connectToHost(m_host, m_port);
+    qDebug() << "[WiFi TOPO] connecting to" << m_host << ":" << m_port;
+}
+
+void SocketTransport::onTopoConnected()
+{
+    char cmd[2] = { static_cast<char>(CMD_MAGIC), static_cast<char>(CMD_TOPO) };
+    m_topoSocket->write(cmd, 2);
+    m_topoTimeout.start(TOPO_TIMEOUT);   /* 等待固件 3.5s 收集响应 */
+    qDebug() << "[WiFi TOPO] command sent";
+}
+
+void SocketTransport::onTopoReadyRead()
+{
+    if (!m_topoSocket) return;
+    QByteArray raw = m_topoSocket->readAll();
+    if (raw.isEmpty()) return;
+
+    QList<MeshNode> nodes;
+    int count = static_cast<quint8>(raw[0]);
+    for (int i = 0; i < count && (1 + i * 3 + 2) < raw.size(); ++i) {
+        quint16 addr = (static_cast<quint8>(raw[1 + i*3]) << 8)
+                     |  static_cast<quint8>(raw[2 + i*3]);
+        quint8  hops =  static_cast<quint8>(raw[3 + i*3]);
+        nodes.append(MeshNode(addr, hops));
+    }
+
+    m_topoTimeout.stop();
+    qDebug() << "[WiFi TOPO]" << nodes.size() << "nodes received";
+    emit wifiTopologyReceived(nodes);
+
+    m_topoSocket->disconnect(this);
+    m_topoSocket->abort();
+    m_topoSocket->deleteLater();
+    m_topoSocket = nullptr;
+}
+
+void SocketTransport::onTopoError()
+{
+    qDebug() << "[WiFi TOPO] error:" << (m_topoSocket ? m_topoSocket->errorString() : QString());
+    m_topoTimeout.stop();
+    emit wifiTopologyReceived({});
+    if (m_topoSocket) {
+        m_topoSocket->disconnect(this);
+        m_topoSocket->abort();
+        m_topoSocket->deleteLater();
+        m_topoSocket = nullptr;
+    }
+}
+
+void SocketTransport::onTopoTimeout()
+{
+    qDebug() << "[WiFi TOPO] timeout";
+    emit wifiTopologyReceived({});
+    if (m_topoSocket) {
+        m_topoSocket->disconnect(this);
+        m_topoSocket->abort();
+        m_topoSocket->deleteLater();
+        m_topoSocket = nullptr;
+    }
 }

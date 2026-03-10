@@ -67,6 +67,12 @@ MainWindow::MainWindow(QWidget *parent)
     // 图片传输完成后自动刷新拓扑
     connect(m_ble, &BleManager::imageSendStateChanged, this, &MainWindow::onImageSendDone);
 
+    // WiFi TOPO 查询: ConnectedPage 按钮 → wifi → ConnectedPage 刷新节点列表
+    connect(m_connectedPage, &ConnectedPage::wifiTopoQueryRequested,
+            m_wifi, &SocketTransport::queryTopologyWifi);
+    connect(m_wifi, &SocketTransport::wifiTopologyReceived,
+            m_connectedPage, &ConnectedPage::onWifiTopologyReceived);
+
     // WiFi 传输进度 / 状态 / 结果
     connect(m_wifi, &SocketTransport::progressChanged,
             m_connectedPage, &ConnectedPage::updateWifiProgress);
@@ -340,9 +346,12 @@ void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution 
     connect(dlg, &ImagePreviewDialog::wifiSendRequested, this,
             [this, node, multicastTargets](const QByteArray &imageData, int w, int h,
                                            quint8 imageMode, const QImage &previewBitmap) {
-        m_connectedPage->addLog(tr("[WiFi] 发送图片 %1x%2 (%3 B)...")
-                                    .arg(w).arg(h).arg(imageData.size()));
-        m_wifi->sendImage(imageData, w, h, imageMode);
+        /* hops==0 → 网关本地 ePaper(0xFFFF); 其他 → Mesh 转发到节点地址 */
+        quint16 wifiDst = (node.hops == 0) ? 0xFFFF : node.addr;
+        m_connectedPage->addLog(tr("[WiFi] 发送图片 %1x%2 (%3 B) → 0x%4")
+                                    .arg(w).arg(h).arg(imageData.size())
+                                    .arg(wifiDst, 4, 16, QChar('0')));
+        m_wifi->sendImage(imageData, w, h, imageMode, wifiDst);
 
         // 保存节点图片
         if (!multicastTargets.isEmpty()) {
