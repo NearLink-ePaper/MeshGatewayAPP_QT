@@ -1180,6 +1180,23 @@ static void fc_start(void)
      * 全部在一次函数调用中完成，无需状态机 tick 驱动，延迟从 ~2200ms 降至 <1ms */
     if (hops == 0) {
         g_fc.state = FC_SENDING;  /* 非 IDLE，RESULT 处理器需要此状态 */
+
+        /* O10b: 重新注入 START 确保 image_receiver 处于 RECEIVING 状态。
+         * 初次 START 在 BLE 上传开始时注入，但到 END 时可能被 ePaper 任务的
+         * image_receiver_reset() 或无活动超时重置为 IDLE，导致后续 DATA 全丢。 */
+        if (g_img_cache.start_len > 0) {
+            uint8_t sbuf[16];
+            sbuf[0] = 0x04;
+            (void)memcpy_s(&sbuf[1], sizeof(sbuf) - 1,
+                           g_img_cache.start_payload, g_img_cache.start_len);
+            uint8_t slen = 1 + g_img_cache.start_len;
+            if (slen >= 5) {
+                sbuf[3] = (g_img_cache.fc_pkt_count >> 8) & 0xFF;
+                sbuf[4] = g_img_cache.fc_pkt_count & 0xFF;
+            }
+            mesh_gateway_inject(g_img_cache.dst_addr, sbuf, slen);
+        }
+
         for (uint16_t seq = 0; seq < g_img_cache.fc_pkt_count; seq++) {
             fc_inject_data_pkt(seq);
         }
@@ -1188,11 +1205,21 @@ static void fc_start(void)
         /* send_image_response(0x86) 已在 fc_send_end 同步调用链中完成:
          *   FC_IDLE, g_img_cache.active=0, fc_stop_turbo, resume_scan, BLE notify */
         if (g_fc.state != FC_IDLE) {
-            /* 兜底: 若同步路径异常未到达 IDLE，强制清理 */
+            /* 兜底: 若同步路径异常未到达 IDLE，强制清理并通知 APP 失败 */
             g_fc.state = FC_IDLE;
             g_mesh_log_suppress = false;
             sle_uart_resume_scan();
             g_img_cache.active = 0;
+            /* O10b: 构造 RESULT(TIMEOUT) 帧通知 APP，避免 APP 永远等待 */
+            uint8_t fail_frame[5] = { 0xAA, 0x86,
+                (uint8_t)(g_img_cache.dst_addr >> 8),
+                (uint8_t)(g_img_cache.dst_addr & 0xFF), 0x02 };
+            gatts_ntf_ind_t ntf = { 0 };
+            ntf.attr_handle = g_gw_notify_handle;
+            ntf.value_len   = sizeof(fail_frame);
+            ntf.value       = fail_frame;
+            gatts_notify_indicate(g_gw_server_id, g_gw_conn_id, &ntf);
+            osal_printk("%s FC O10 fallback: notified APP RESULT=TIMEOUT\r\n", BLE_GW_LOG);
         }
         osal_printk("%s FC self-send complete (O10 inline fast path)\r\n", BLE_GW_LOG);
         return;
