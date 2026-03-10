@@ -32,7 +32,7 @@
         android:icon="@mipmap/ic_launcher"
         android:hardwareAccelerated="true"
         android:allowBackup="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoTitleBar">
+        android:theme="@style/AppTheme">
         <activity
             android:name="@QT_ANDROID_ACTIVITY_CLASS@"
             android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
