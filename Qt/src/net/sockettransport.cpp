@@ -283,6 +283,7 @@ void SocketTransport::onTopoConnected()
 {
     char cmd[2] = { static_cast<char>(CMD_MAGIC), static_cast<char>(CMD_TOPO) };
     m_topoSocket->write(cmd, 2);
+    m_topoSocket->flush();              /* 强制立即发送，不等待 Nagle 定时器 */
     m_topoTimeout.start(TOPO_TIMEOUT);   /* 等待固件 3.5s 收集响应 */
     qDebug() << "[WiFi TOPO] command sent";
 }

@@ -263,7 +263,7 @@ static void *server_task(const char *arg)
         printf("%s client connected\r\n", SOCK_LOG);
         /* 设置 recv 超时: 防止探测连接或死连接长期阻塞 accept 循环 */
         {
-            struct timeval tv = { .tv_sec = 5, .tv_usec = 0 };
+            struct timeval tv = { .tv_sec = 10, .tv_usec = 0 };
             lwip_setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         }
         handle_client(client_fd);
