@@ -38,16 +38,28 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     setStyleSheet(QStringLiteral(
         "QDialog { background-color: rgba(0,0,0,160); }"));
 
-    // ── 布局：顶部信息卡 + 弹性区（可放图片）+ 底部按钮卡 ──
+    // ── 全屏单张 sheet，内部 header 置顶 + stretch + 按钮置底 ──
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(dp(12), dp(16), dp(12), dp(20));
-    root->setSpacing(dp(10));
+    root->setSpacing(0);
 
-    // ─── 顶部信息卡（置顶，不贴边） ───
-    auto *headerCard = new AAWidget(this);
+    auto *sheet = new AAWidget(this);
+    sheet->setBgColor(QColor(22, 27, 34));
+    sheet->setBorderColor(QColor(255, 255, 255, 18));
+    sheet->setBorderRadius(dp(16));
+    sheet->setBorderWidth(1);
+    sheet->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    root->addWidget(sheet, 1);
+
+    auto *sheetLayout = new QVBoxLayout(sheet);
+    sheetLayout->setContentsMargins(dp(14), dp(16), dp(14), dp(16));
+    sheetLayout->setSpacing(dp(10));
+
+    // ── 信息卡（置顶） ──
+    auto *headerCard = new AAWidget(sheet);
     headerCard->setBgColor(QColor(30, 38, 50));
-    headerCard->setBorderColor(QColor(accent.red(), accent.green(), accent.blue(), 60));
-    headerCard->setBorderRadius(dp(14));
+    headerCard->setBorderColor(QColor(accent.red(), accent.green(), accent.blue(), 80));
+    headerCard->setBorderRadius(dp(12));
     headerCard->setBorderWidth(1);
     headerCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -83,33 +95,21 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
 
     headerRow->addWidget(avatarLabel);
     headerRow->addLayout(addrCol, 1);
-    root->addWidget(headerCard);
+    sheetLayout->addWidget(headerCard);
 
-    // ─── 中部弹性区（有图时显示上次发送预览） ───
+    // ── 中部弹性区（有图时展示，无图时空白stretch） ──
     if (!lastSentBitmap.isNull()) {
-        auto *imgArea = new QLabel(this);
+        auto *imgArea = new QLabel(sheet);
         imgArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         imgArea->setAlignment(Qt::AlignCenter);
         int maxH = scrH * 5 / 10;
         QPixmap pix = QPixmap::fromImage(lastSentBitmap)
-            .scaled(dlgW - dp(24), maxH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            .scaled(dlgW - dp(28), maxH, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         imgArea->setPixmap(pix);
-        root->addWidget(imgArea, 3);
+        sheetLayout->addWidget(imgArea, 3);
     } else {
-        root->addStretch(3);
+        sheetLayout->addStretch(3);
     }
-
-    // ─────────── 底部按钮卡 ───────────
-    auto *sheet = new AAWidget(this);
-    sheet->setBgColor(QColor(22, 27, 34));
-    sheet->setBorderColor(QColor(255, 255, 255, 18));
-    sheet->setBorderRadius(dp(16));
-    sheet->setBorderWidth(1);
-    sheet->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-    auto *sheetLayout = new QVBoxLayout(sheet);
-    sheetLayout->setContentsMargins(dp(14), dp(14), dp(14), dp(14));
-    sheetLayout->setSpacing(dp(10));
 
     // ── 发送图片 ──
     auto *imgBtn = new AAButton(tr("发送图片"), sheet);
