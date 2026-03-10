@@ -436,7 +436,7 @@ extern uint16_t g_mesh_node_addr;
  *    28 为中等偏低优先级，不影响系统关键任务。
  *    若图片传输对实时性要求极高，可降至 25~26。
  * ============================================================ */
-#define MESH_TASK_STACK_SIZE        0x3000   /* Mesh 主任务栈大小: 12288 字节（回退至原始值，节省堆支持 96KB 缓冲区）*/
+#define MESH_TASK_STACK_SIZE        0x2000   /* Mesh 主任务栈大小: 8192 字节。waterline=0x7bc(2KB), FC 期间栈上 485B mesh_buf, 8KB 留 2x+ 余量。释放 4KB 堆给 WiFi+BT OAL */
 #define MESH_TASK_PRIO              28       /* Mesh 主任务优先级 (LiteOS, 数值越小越高) */
 
 /* ============================================================
