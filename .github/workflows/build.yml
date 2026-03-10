@@ -311,12 +311,39 @@ jobs:
           cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          APK=$(find build -name "*.apk" -not -name "*debug*" -type f | head -1)
+          APK=$(find build -name "*.apk" -type f | head -1)
           if [ -n "$APK" ]; then
-            cp "$APK" artifact/NearLink_Mesh-arm64-v8a.apk
+            cp "$APK" artifact/NearLink_Mesh-arm64-v8a-unsigned.apk
           else
             echo "ERROR: APK not found" && exit 1
           fi
+
+      - name: Sign APK (debug keystore for sideloading)
+        run: |
+          # 生成调试密钥库
+          mkdir -p ~/.android
+          keytool -genkey -noprompt \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
+
+          # 查找最新 build-tools
+          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)
+          echo "Using build-tools: $BUILD_TOOLS"
+
+          UNSIGNED=artifact/NearLink_Mesh-arm64-v8a-unsigned.apk
+          ALIGNED=artifact/aligned.apk
+          SIGNED=artifact/NearLink_Mesh-arm64-v8a.apk
+
+          $BUILD_TOOLS/zipalign -f -v 4 "$UNSIGNED" "$ALIGNED"
+          $BUILD_TOOLS/apksigner sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android --key-pass pass:android \
+            --out "$SIGNED" "$ALIGNED"
+          rm -f "$UNSIGNED" "$ALIGNED"
+          $BUILD_TOOLS/apksigner verify --verbose "$SIGNED"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -390,12 +417,36 @@ jobs:
           cmake --build build --target apk --config ${{ env.BUILD_TYPE }}
 
           mkdir -p artifact
-          APK=$(find build -name "*.apk" -not -name "*debug*" -type f | head -1)
+          APK=$(find build -name "*.apk" -type f | head -1)
           if [ -n "$APK" ]; then
-            cp "$APK" artifact/NearLink_Mesh-x86_64.apk
+            cp "$APK" artifact/NearLink_Mesh-x86_64-unsigned.apk
           else
             echo "ERROR: APK not found" && exit 1
           fi
+
+      - name: Sign APK (debug keystore for sideloading)
+        run: |
+          mkdir -p ~/.android
+          keytool -genkey -noprompt \
+            -keystore ~/.android/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android -keypass android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
+
+          BUILD_TOOLS=$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | sort -V | tail -1)
+
+          UNSIGNED=artifact/NearLink_Mesh-x86_64-unsigned.apk
+          ALIGNED=artifact/aligned.apk
+          SIGNED=artifact/NearLink_Mesh-x86_64.apk
+
+          $BUILD_TOOLS/zipalign -f -v 4 "$UNSIGNED" "$ALIGNED"
+          $BUILD_TOOLS/apksigner sign \
+            --ks ~/.android/debug.keystore \
+            --ks-pass pass:android --key-pass pass:android \
+            --out "$SIGNED" "$ALIGNED"
+          rm -f "$UNSIGNED" "$ALIGNED"
+          $BUILD_TOOLS/apksigner verify --verbose "$SIGNED"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
