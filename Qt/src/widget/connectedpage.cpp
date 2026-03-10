@@ -381,6 +381,7 @@ void ConnectedPage::updateSendPlaceholder()
 
 void ConnectedPage::onDebugInfoChanged(const QString &info)
 {
+    if (m_wifiMode) return;  /* WiFi 模式不覆盖 */
     m_debugLabel->setText(info);
 }
 
@@ -660,7 +661,7 @@ void ConnectedPage::setWifiMode(const WifiDevice &device)
     m_deviceNameLabel->setText(device.name);
     m_gwAddrLabel->setText(
         QStringLiteral("%1:%2  [WiFi]").arg(device.host).arg(device.port));
-    m_debugLabel->setText(tr("WiFi 已连接 ✔"));
+    m_debugLabel->setText(tr("收到: %1\n%2:%3  [WiFi]").arg(device.name).arg(device.host).arg(device.port));
 
     // WiFi 模式不需要查询 BLE 拓扑
     m_queryTopoBtn->setVisible(false);

@@ -20,7 +20,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         scrW = scr->availableGeometry().width();
         scrH = scr->availableGeometry().height();
     }
-    setMinimumWidth(qMin(340, scrW - 32));
+    setFixedWidth(scrW - 16);
 
     // 节点跳数对应主题色
     QString hopsColor;
@@ -35,7 +35,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(dp(16), dp(16), dp(16), dp(12));
     root->setSpacing(dp(8));
-    root->setSizeConstraint(QLayout::SetFixedSize);  /* 禁止对话框撑满屏幕 */
+    root->setSizeConstraint(QLayout::SetMinimumSize);  /* 高度自适应，宽度由 setFixedWidth 控制 */
 
     // ─────────────── 头部信息卡 ───────────────
     auto *headerCard = new AAWidget(this);
