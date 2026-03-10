@@ -22,11 +22,14 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         scrW  = geom.width();
         scrH  = geom.height();
     }
-    // 移动端：全屏宽（内边距由 root layout 提供），PC 端限 360px 居中
-    int dlgW = (scrW <= 500) ? scrW : qMin(360, scrW - 32);
+    // 移动端：全屏宽全屏高；PC 端：限宽 360px，高度不超过屏幕 70% 且最大 560px
+    bool isMobile = (scrW <= 500);
+    int dlgW = isMobile ? scrW : qMin(360, scrW - 32);
+    int dlgH = isMobile ? scrH : qMin(560, (int)(scrH * 0.70));
     int dlgX = geom.left() + (scrW - dlgW) / 2;
+    int dlgY = geom.top()  + (scrH - dlgH) / 2;
     setFixedWidth(dlgW);
-    setGeometry(dlgX, geom.top(), dlgW, scrH);
+    setGeometry(dlgX, dlgY, dlgW, dlgH);
 
     // 节点跳数对应主题色
     QString hopsColor;
