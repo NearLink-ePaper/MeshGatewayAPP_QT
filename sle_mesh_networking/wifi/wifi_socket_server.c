@@ -15,7 +15,7 @@
 #include <string.h>
 
 #define SOCK_LOG    "[wifi sock]"
-#define SERVER_TASK_STACK   0x2000
+#define SERVER_TASK_STACK   0x4000  /* 16KB: SRAM 606KB 充足 */
 #define SERVER_TASK_PRIO    (osPriority_t)(15)
 
 /**

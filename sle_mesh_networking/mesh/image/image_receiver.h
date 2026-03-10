@@ -35,19 +35,19 @@ extern "C" {
  * ====================================================================== */
 
 /** 图片接收缓冲区大小（字节）。
- *  RAW/RLE 模式: 1bpp 输出 (480/8)×800 = 48000 字节。
+ *  4bpp RAW 模式: 480×800 / 2 = 192000 字节（SRAM 606KB 足够）。
  *  JPEG 模式: 接收 JPEG 压缩数据 (≤30KB), ePaper 任务流式解码显示。 */
-#define IMG_RX_BUF_SIZE         48000
+#define IMG_RX_BUF_SIZE         192000
 
 /** 单个分包最大载荷（字节）。
  *  O4 优化：从 200 提升到 480，与 mesh_config.h 中 IMG_FC_PKT_PAYLOAD 保持一致。
  *  取值范围：不能超过 mesh 底层 MTU 减去 5 字节头部开销。 */
 #define IMG_PKT_PAYLOAD         480
 
-/** 分包总数上限，向上取整：48000 / 480 = 100 包（当前实际值） */
-#define IMG_MAX_PKTS            ((IMG_RX_BUF_SIZE + IMG_PKT_PAYLOAD - 1) / IMG_PKT_PAYLOAD)  /* 240 */
-/** 位图字节数，每 bit 对应一个 seq：ceil(240/8) = 30 字节 */
-#define IMG_BITMAP_BYTES        ((IMG_MAX_PKTS + 7) / 8)   /* 30 bytes */
+/** 分包总数上限，向上取整：192000 / 480 = 400 包 */
+#define IMG_MAX_PKTS            ((IMG_RX_BUF_SIZE + IMG_PKT_PAYLOAD - 1) / IMG_PKT_PAYLOAD)  /* 400 */
+/** 位图字节数，每 bit 对应一个 seq：ceil(400/8) = 50 字节 */
+#define IMG_BITMAP_BYTES        ((IMG_MAX_PKTS + 7) / 8)   /* 50 bytes */
 
 /** 补包最大重试轮次。超过此轮次后放弃接收并上报 CRC_ERR。
  *  取值范围：1~10，建议 3~5；过大会延长失败恢复时间。 */
