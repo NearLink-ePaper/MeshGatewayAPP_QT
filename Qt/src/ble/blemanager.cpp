@@ -716,7 +716,9 @@ void BleManager::imgUpdateFastProgress()
 
     int sent = qBound(0, m_imgFastSeq, m_imgTotalPkts);
 
-    if (sent >= m_imgTotalPkts) {
+    // 只有 END 帧已发出（seq = total+1）才切换状态；
+    // seq == total 时 DATA 全部入队但写完成回调尚未触发 END，不能提前切换
+    if (m_imgFastSeq > m_imgTotalPkts) {
         // BLE 上传完成 → 等待网关流控/组播
         if (t == ImgSending) {
             if (!m_imgMulticastTargets.isEmpty()) {
