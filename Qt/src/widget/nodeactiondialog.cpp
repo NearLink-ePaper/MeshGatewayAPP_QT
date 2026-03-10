@@ -32,24 +32,31 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     }
     QColor accent(hopsColor);
 
+    // ── iOS action-sheet 风格: 顶部大弹性区 + 底部紧凑内容卡 ──
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(dp(16), dp(20), dp(16), dp(20));
+    root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // ─────────────── 头部信息卡（置顶） ───────────────
-    auto *headerCard = new AAWidget(this);
-    headerCard->setBgColor(QColor(30, 38, 50));
-    headerCard->setBorderColor(QColor(accent.red(), accent.green(), accent.blue(), 60));
-    headerCard->setBorderRadius(dp(14));
-    headerCard->setBorderWidth(1);
-    headerCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    // 顶部弹性区（点透明，内容推到底部）
+    root->addStretch(3);
 
-    auto *headerLayout = new QHBoxLayout(headerCard);
-    headerLayout->setContentsMargins(dp(16), dp(14), dp(16), dp(14));
-    headerLayout->setSpacing(dp(12));
+    // ─────────── 底部内容卡（圆角顶部） ───────────
+    auto *sheet = new AAWidget(this);
+    sheet->setBgColor(QColor(22, 27, 34));
+    sheet->setBorderColor(QColor(255, 255, 255, 18));
+    sheet->setBorderRadius(dp(20));
+    sheet->setBorderWidth(1);
+    sheet->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    // 圆形节点头像
-    auto *avatarLabel = new QLabel(headerCard);
+    auto *sheetLayout = new QVBoxLayout(sheet);
+    sheetLayout->setContentsMargins(dp(16), dp(20), dp(16), dp(28));
+    sheetLayout->setSpacing(dp(10));
+
+    // ── 头部信息行 ──
+    auto *headerRow = new QHBoxLayout();
+    headerRow->setSpacing(dp(12));
+
+    auto *avatarLabel = new QLabel(sheet);
     avatarLabel->setFixedSize(dp(44), dp(44));
     avatarLabel->setAlignment(Qt::AlignCenter);
     avatarLabel->setStyleSheet(QStringLiteral(
@@ -60,65 +67,54 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         .arg(dp(22)));
     avatarLabel->setText(hopsText);
 
-    // 地址 + 跳数列
     auto *addrCol = new QVBoxLayout();
     addrCol->setSpacing(dp(3));
     auto *addrLabel = new QLabel(
-        QStringLiteral("0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper(), headerCard);
+        QStringLiteral("0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper(), sheet);
     addrLabel->setStyleSheet(QStringLiteral(
         "color:#E6EDF3; font-size:%1px; font-weight:700; letter-spacing:1px;").arg(dp(18)));
     auto *hopsSubLabel = new QLabel(
         node.hops == 0 ? tr("网关节点")
                        : (node.hops == 1 ? tr("直连节点")
-                                         : tr("%1 跳路由").arg(node.hops)), headerCard);
+                                         : tr("%1 跳路由").arg(node.hops)), sheet);
     hopsSubLabel->setStyleSheet(QStringLiteral(
         "color:%1; font-size:%2px;").arg(hopsColor).arg(dp(12)));
     addrCol->addWidget(addrLabel);
     addrCol->addWidget(hopsSubLabel);
 
-    headerLayout->addWidget(avatarLabel);
-    headerLayout->addLayout(addrCol, 1);
-    root->addWidget(headerCard);
+    headerRow->addWidget(avatarLabel);
+    headerRow->addLayout(addrCol, 1);
+    sheetLayout->addLayout(headerRow);
 
-    // ─────────────── 上次发送预览（紧跟 header） ───────────────
+    // ── 上次发送预览 ──
     if (!lastSentBitmap.isNull()) {
-        root->addSpacing(dp(10));
-        auto *prevCard = new AAWidget(this);
-        prevCard->setBgColor(QColor(22, 27, 34));
-        prevCard->setBorderColor(QColor(240, 246, 252, 15));
-        prevCard->setBorderRadius(dp(12));
-        prevCard->setBorderWidth(1);
+        auto *prevRow = new QHBoxLayout();
+        prevRow->setSpacing(dp(10));
 
-        auto *prevLayout = new QVBoxLayout(prevCard);
-        prevLayout->setContentsMargins(dp(12), dp(10), dp(12), dp(10));
-        prevLayout->setSpacing(dp(6));
-
-        auto *prevTitle = new QLabel(tr("上次发送图片"), prevCard);
+        auto *prevTitle = new QLabel(tr("上次发送"), sheet);
         prevTitle->setStyleSheet(QStringLiteral(
             "color:#6E7681; font-size:%1px;").arg(dp(11)));
 
-        auto *prevLabel = new QLabel(prevCard);
-        int prevSize = qMin(qMin(scrW - 80, scrH / 4), dp(160));
+        auto *prevLabel = new QLabel(sheet);
+        int prevSize = qMin(qMin(scrW / 4, scrH / 8), dp(80));
         QPixmap pix = QPixmap::fromImage(lastSentBitmap)
             .scaled(prevSize, prevSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         prevLabel->setPixmap(pix);
-        prevLabel->setAlignment(Qt::AlignCenter);
-        prevLayout->addWidget(prevTitle);
-        prevLayout->addWidget(prevLabel, 0, Qt::AlignCenter);
-        root->addWidget(prevCard);
+        prevLabel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+
+        prevRow->addWidget(prevTitle, 1, Qt::AlignVCenter);
+        prevRow->addWidget(prevLabel);
+        sheetLayout->addLayout(prevRow);
     }
 
-    // ─────────────── 弹性空间：把按钮推到底部 ───────────────
-    root->addStretch(1);
+    // ── 分割线 ──
+    auto *sep = new QFrame(sheet);
+    sep->setFrameShape(QFrame::HLine);
+    sep->setStyleSheet(QStringLiteral("color: rgba(255,255,255,12);"));
+    sheetLayout->addWidget(sep);
 
-    // ─────────────── 操作按钮（靠底部） ───────────────
-    auto *btnContainer = new QWidget(this);
-    auto *btnLayout = new QVBoxLayout(btnContainer);
-    btnLayout->setContentsMargins(0, 0, 0, 0);
-    btnLayout->setSpacing(dp(10));
-
-    // 主操作: 发送图片（实心蓝色）
-    auto *imgBtn = new AAButton(tr("发送图片"), this);
+    // ── 发送图片 ──
+    auto *imgBtn = new AAButton(tr("发送图片"), sheet);
     imgBtn->setMinimumHeight(dp(52));
     imgBtn->setBgColor(QColor(29, 99, 191));
     imgBtn->setBorderColor(QColor(88, 166, 255, 80));
@@ -138,10 +134,10 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         emit sendImageRequested(m_node);
         accept();
     });
-    btnLayout->addWidget(imgBtn);
+    sheetLayout->addWidget(imgBtn);
 
-    // 次操作: 发送文本（边框风格）
-    auto *textBtn = new AAButton(tr("发送文本"), this);
+    // ── 发送文本 ──
+    auto *textBtn = new AAButton(tr("发送文本"), sheet);
     textBtn->setMinimumHeight(dp(46));
     textBtn->setBgColor(QColor(22, 27, 34));
     textBtn->setBorderColor(QColor(63, 185, 80, 120));
@@ -161,10 +157,10 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         emit sendTextRequested(m_node);
         accept();
     });
-    btnLayout->addWidget(textBtn);
+    sheetLayout->addWidget(textBtn);
 
-    // 取消（淡色文字）
-    auto *cancelBtn = new AAButton(tr("取消"), this);
+    // ── 取消 ──
+    auto *cancelBtn = new AAButton(tr("取消"), sheet);
     cancelBtn->setMinimumHeight(dp(36));
     cancelBtn->setBgColor(Qt::transparent);
     cancelBtn->setBorderColor(Qt::transparent);
@@ -179,7 +175,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     fSmall.setPixelSize(dp(13));
     cancelBtn->setFont(fSmall);
     connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
-    btnLayout->addWidget(cancelBtn);
+    sheetLayout->addWidget(cancelBtn);
 
-    root->addWidget(btnContainer);
+    root->addWidget(sheet);
 }
