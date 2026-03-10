@@ -15,14 +15,18 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
 {
     setWindowTitle(QStringLiteral("0x%1").arg(node.addr, 4, 16, QChar('0')).toUpper());
 
+    QRect geom;
     int scrW = 420, scrH = 700;
     if (auto *scr = QGuiApplication::primaryScreen()) {
-        scrW = scr->availableGeometry().width();
-        scrH = scr->availableGeometry().height();
+        geom  = scr->availableGeometry();
+        scrW  = geom.width();
+        scrH  = geom.height();
     }
-    // 移动端贴满屏宽，PC 端限制最大 360px
-    int dlgW = (scrW <= 500) ? (scrW - 16) : qMin(360, scrW - 32);
+    // 移动端：全屏宽（内边距由 root layout 提供），PC 端限 360px 居中
+    int dlgW = (scrW <= 500) ? scrW : qMin(360, scrW - 32);
+    int dlgX = geom.left() + (scrW - dlgW) / 2;
     setFixedWidth(dlgW);
+    setGeometry(dlgX, geom.top(), dlgW, scrH);
 
     // 节点跳数对应主题色
     QString hopsColor;
