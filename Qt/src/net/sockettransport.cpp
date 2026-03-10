@@ -96,11 +96,15 @@ void SocketTransport::onBytesWritten(qint64 bytes)
 
 void SocketTransport::onReadyRead()
 {
-    if (m_state != WaitingReply) return;
+    /* 服务器可能在 Sending 阶段就发错误响应（如 BUSY/OOM）并关闭连接，
+     * 需在任何活跃状态下处理，不能只限 WaitingReply */
+    if (m_state == Idle || m_state == Done || m_state == Error) return;
+
     QByteArray resp = m_socket->readAll();
     m_timeout.stop();
 
     if (resp.isEmpty()) {
+        if (m_state != WaitingReply) return;  /* 非等待响应阶段不处理空数据 */
         setState(Error);
         emit finished(false, tr("Empty response"));
         cleanup();
