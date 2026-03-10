@@ -7,6 +7,7 @@
 #include "image_receiver.h"
 #include "epaper.h"
 #include "watchdog.h"
+#include "ble_gateway.h"
 #include "soc_osal.h"
 #include "cmsis_os2.h"
 #include "securec.h"
@@ -76,6 +77,14 @@ static void handle_client(int client_fd)
         printf("%s data_size %lu > buf %d, OOM\r\n",
                SOCK_LOG, (unsigned long)data_size, IMG_RX_BUF_SIZE);
         resp = WIFI_IMG_RESP_OOM;
+        lwip_send(client_fd, &resp, 1, 0);
+        return;
+    }
+
+    /* 互斥检查: BLE 已连接时拒绝 WiFi 传图 */
+    if (ble_gateway_is_connected()) {
+        printf("%s BLE active, reject WiFi transfer\r\n", SOCK_LOG);
+        resp = WIFI_IMG_RESP_BUSY;
         lwip_send(client_fd, &resp, 1, 0);
         return;
     }

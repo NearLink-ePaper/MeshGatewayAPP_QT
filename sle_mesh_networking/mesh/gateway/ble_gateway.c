@@ -1502,6 +1502,17 @@ void ble_gateway_img_tick(void)
                     sle_uart_resume_scan();
                     fc_stop_turbo_now();
                     g_img_cache.active = 0;
+                    /* F29d: 通知 APP 传输超时，防止 APP 永久等待 RESULT */
+                    if (g_gw_connected && g_gw_notify_handle != 0) {
+                        uint8_t fail_frame[5] = { 0xAA, 0x86,
+                            (uint8_t)(g_img_cache.dst_addr >> 8),
+                            (uint8_t)(g_img_cache.dst_addr & 0xFF), 0x02 };
+                        gatts_ntf_ind_t ntf = { 0 };
+                        ntf.attr_handle = g_gw_notify_handle;
+                        ntf.value_len   = sizeof(fail_frame);
+                        ntf.value       = fail_frame;
+                        gatts_notify_indicate(g_gw_server_id, g_gw_conn_id, &ntf);
+                    }
                     break;
                 }
                 g_fc.ssthresh = g_fc.window / 2;

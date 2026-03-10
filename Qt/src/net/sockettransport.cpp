@@ -114,6 +114,7 @@ void SocketTransport::onReadyRead()
     case 0: msg = tr("OK"); break;
     case 1: msg = tr("Device OOM"); break;
     case 2: msg = tr("Decode failed"); break;
+    case 3: msg = tr("Device busy (BLE active)"); break;
     default: msg = tr("Unknown error %1").arg(code); break;
     }
 

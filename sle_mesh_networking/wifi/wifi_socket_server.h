@@ -27,6 +27,7 @@
 #define WIFI_IMG_RESP_OK        0
 #define WIFI_IMG_RESP_OOM       1
 #define WIFI_IMG_RESP_FAIL      2
+#define WIFI_IMG_RESP_BUSY      3   /* BLE 已连接，互斥拒绝 */
 
 /**
  * @brief  启动 WiFi 图片接收服务器任务
