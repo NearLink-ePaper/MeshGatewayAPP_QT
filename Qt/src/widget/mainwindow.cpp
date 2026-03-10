@@ -69,8 +69,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // WiFi 传输结果日志
     connect(m_wifi, &SocketTransport::finished, this, [this](bool ok, const QString &msg) {
-        m_connectedPage->addLog(ok ? tr("📶 WiFi: %1").arg(msg)
-                                   : tr("📶 WiFi failed: %1").arg(msg));
+        m_connectedPage->addLog(ok ? tr("[WiFi] %1").arg(msg)
+                                   : tr("[WiFi] 失败: %1").arg(msg));
     });
 
     // 加载持久化的节点图片
@@ -143,6 +143,7 @@ void MainWindow::onConnStateChanged(BleManager::ConnState state)
     switch (state) {
     case BleManager::Disconnected:
     case BleManager::Scanning:
+        if (m_currentTransport == ImagePreviewDialog::WifiTransport) break;
         m_stack->setCurrentIndex(0);
         m_topoQueryTimer.stop();
         m_autoTopoTimer.stop();
@@ -172,7 +173,7 @@ void MainWindow::onWifiDeviceSelected(const WifiDevice &device)
 
     // 填充 ConnectedPage 的设备信息和节点列表
     m_connectedPage->setWifiMode(device);
-    m_connectedPage->addLog(tr("📶 WiFi connected to %1 (%2:%3)")
+    m_connectedPage->addLog(tr("[WiFi] 已连接 %1 (%2:%3)")
                                 .arg(device.name).arg(device.host).arg(device.port));
     m_stack->setCurrentIndex(2);
     m_statusDot->setStyleSheet("background-color: #4CAF50; border-radius: 5px;");
@@ -296,7 +297,7 @@ void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution 
         if (!multicastTargets.isEmpty()) {
             // 组播发送
             m_ble->sendImageMulticast(multicastTargets, imageData, w, h, imageMode);
-            m_connectedPage->addLog(tr("→ Multicast image %1×%2 to %3 nodes")
+            m_connectedPage->addLog(tr("[BLE] 组播图片 %1x%2 → %3 节点")
                                         .arg(w).arg(h).arg(multicastTargets.size()));
             // 保存每个目标节点的图片
             for (quint16 addr : multicastTargets) {
@@ -306,7 +307,7 @@ void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution 
         } else {
             // 单播发送
             m_ble->sendImage(node.addr, imageData, w, h, mode, imageMode);
-            m_connectedPage->addLog(tr("→ [0x%1] Image %2×%3 (%4 B)")
+            m_connectedPage->addLog(tr("[BLE] 发送图片 0x%1 %2x%3 (%4 B)")
                                         .arg(MeshProtocol::addrToHex4(node.addr))
                                         .arg(w).arg(h).arg(imageData.size()));
             // 保存节点图片
@@ -319,7 +320,7 @@ void MainWindow::openPreviewDialog(const QImage &cropped, const ImageResolution 
     connect(dlg, &ImagePreviewDialog::wifiSendRequested, this,
             [this, node, multicastTargets](const QByteArray &imageData, int w, int h,
                                            quint8 imageMode, const QImage &previewBitmap) {
-        m_connectedPage->addLog(tr("📶 WiFi sending %1×%2 (%3 B)...")
+        m_connectedPage->addLog(tr("[WiFi] 发送图片 %1x%2 (%3 B)...")
                                     .arg(w).arg(h).arg(imageData.size()));
         m_wifi->sendImage(imageData, w, h, imageMode);
 

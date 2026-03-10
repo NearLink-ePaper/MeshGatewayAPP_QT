@@ -78,9 +78,12 @@ void ImagePreviewDialog::buildUI()
     dimLabel->setStyleSheet(QStringLiteral(
         "color: #E6EDF3; font-size: %1px; font-weight: 600;").arg(dp(13)));
 
+    QString modeStr = (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG)
+        ? QStringLiteral("JPEG Q%1").arg(m_processed.jpegQuality)
+        : QStringLiteral("4bpp RAW");
     auto *metaLabel = new QLabel(
-        QStringLiteral("JPEG Q%1  ·  %2 pkts  ·  %3")
-            .arg(m_processed.jpegQuality).arg(m_processed.packetCount).arg(sizeLabel), infoCard);
+        QStringLiteral("%1  ·  %2 pkts  ·  %3")
+            .arg(modeStr).arg(m_processed.packetCount).arg(sizeLabel), infoCard);
     metaLabel->setStyleSheet(QStringLiteral(
         "color: #888; font-size: %1px;").arg(dp(11)));
     metaLabel->setWordWrap(true);
@@ -144,8 +147,8 @@ void ImagePreviewDialog::buildUI()
 
     layout->addWidget(previewCard);
 
-    // ── 画质选择（高/标准/低）────────────────────────────────
-    {
+    // ── 画质选择（高/标准/低）— 仅 JPEG 模式显示 ─────────────
+    if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
         auto *qualCard = new AAWidget(this);
         qualCard->setObjectName("debugCard");
         qualCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -206,15 +209,20 @@ void ImagePreviewDialog::buildUI()
     }
 
     // ── 发送按钮（只显示扫描时选定的传输方式）──────────────
+    // 统一样式参数
+    auto makeSendStyle = [](const QString &rgb, const QString &color, int r, int fs) {
+        return QStringLiteral(
+            "AAButton { background: rgba(%1, 0.18); color: %2; font-weight: 600; "
+            "border-radius: %3px; font-size: %4px; }"
+            "AAButton:hover { background: rgba(%1, 0.32); }")
+            .arg(rgb).arg(color).arg(r).arg(fs);
+    };
+
     if (m_transport == WifiTransport) {
-        // WiFi 发送
         auto *wifiBtn = new AAButton(tr("WiFi 发送 (%1)").arg(sizeLabel), this);
         wifiBtn->setMinimumHeight(dp(52));
-        wifiBtn->setStyleSheet(QStringLiteral(
-            "AAButton { background: rgba(76,175,80,0.18); color: #4CAF50; font-weight: 600; "
-            "border-radius: %1px; font-size: %2px; }"
-            "AAButton:hover { background: rgba(76,175,80,0.35); }")
-            .arg(dp(10)).arg(dp(14)));
+        wifiBtn->setStyleSheet(makeSendStyle(
+            QStringLiteral("76,175,80"), QStringLiteral("#4CAF50"), dp(10), dp(14)));
         connect(wifiBtn, &QPushButton::clicked, this, [this]() {
             int sendW = m_resolution.width, sendH = m_resolution.height;
             if (m_processed.imageMode == MeshProtocol::IMG_MODE_JPEG) {
@@ -226,7 +234,6 @@ void ImagePreviewDialog::buildUI()
         });
         layout->addWidget(wifiBtn);
     } else {
-        // BLE 发送
         QString bleText = m_multicastTargets.isEmpty()
             ? tr("BLE 发送 (%1)").arg(sizeLabel)
             : tr("BLE 组播 (%1)  ▶").arg(sizeLabel);
@@ -237,11 +244,7 @@ void ImagePreviewDialog::buildUI()
 
         auto *sendBtn = new AAButton(bleText, this);
         sendBtn->setMinimumHeight(dp(52));
-        sendBtn->setStyleSheet(QStringLiteral(
-            "AAButton { background: rgba(%1, 0.18); color: %2; font-weight: 600; "
-            "border-radius: %3px; font-size: %4px; }"
-            "AAButton:hover { background: rgba(%1, 0.35); }")
-            .arg(bleRgb).arg(bleColor).arg(dp(10)).arg(dp(14)));
+        sendBtn->setStyleSheet(makeSendStyle(bleRgb, bleColor, dp(10), dp(14)));
         connect(sendBtn, &QPushButton::clicked, this, [this]() {
             BleManager::ImageSendMode mode = BleManager::FastMode;
             if (m_modeCombo && m_modeCombo->currentIndex() == 1)
