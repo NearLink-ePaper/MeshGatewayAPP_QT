@@ -20,7 +20,9 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         scrW = scr->availableGeometry().width();
         scrH = scr->availableGeometry().height();
     }
-    setFixedWidth(scrW - 16);
+    // 移动端贴满屏宽，PC 端限制最大 360px
+    int dlgW = (scrW <= 500) ? (scrW - 16) : qMin(360, scrW - 32);
+    setFixedWidth(dlgW);
 
     // 节点跳数对应主题色
     QString hopsColor;
