@@ -33,8 +33,9 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
     QColor accent(hopsColor);
 
     auto *root = new QVBoxLayout(this);
-    root->setContentsMargins(dp(16), dp(20), dp(16), dp(16));
-    root->setSpacing(dp(10));
+    root->setContentsMargins(dp(16), dp(16), dp(16), dp(12));
+    root->setSpacing(dp(8));
+    root->setSizeConstraint(QLayout::SetFixedSize);  /* 禁止对话框撑满屏幕 */
 
     // ─────────────── 头部信息卡 ───────────────
     auto *headerCard = new AAWidget(this);
@@ -108,9 +109,7 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         root->addWidget(prevCard);
     }
 
-    // ─────────────── 操作按鈕 ───────────────
-    root->addSpacing(dp(4));
-
+    // ─────────────── 操作按钮 ───────────────
     // 主操作: 发送图片（实心蓝色）
     auto *imgBtn = new AAButton(tr("发送图片"), this);
     imgBtn->setMinimumHeight(dp(52));
@@ -156,8 +155,6 @@ NodeActionDialog::NodeActionDialog(const MeshNode &node, const QImage &lastSentB
         accept();
     });
     root->addWidget(textBtn);
-
-    root->addSpacing(dp(2));
 
     // 取消（淡色文字）
     auto *cancelBtn = new AAButton(tr("取消"), this);
