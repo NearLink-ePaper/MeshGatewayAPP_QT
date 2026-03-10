@@ -228,7 +228,14 @@ static int jpeg_output_cb(JDEC *jd, void *bitmap, JRECT *rect)
 }
 
 /* ── 公共 API ─────────────────────────────────────────── */
-bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
+/* scratch 布局 (最大 800×16 JPEG):
+ *   [0,          4096)           TJpgDec 工作池
+ *   [4096,       4096+strip_bytes) MCU 行条带 RGB (运行时确定)
+ *   [4096+strip, ...+err_bytes)   err_cur
+ *   [...,        ...+err_bytes)   err_nxt
+ * 调用方提供的 scratch 必须 >= JPEG_SCRATCH_SIZE (52096 字节) */
+bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size,
+                             uint8_t *scratch, uint32_t scratch_size)
 {
     JDEC jdec;
     JRESULT rc;
@@ -238,20 +245,22 @@ bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
     mem_stream_t stream;
     uint32_t err_row_bytes;
     uint32_t strip_bytes;
+    uint32_t scratch_used;
 
-    pool = NULL;
     result = false;
     w = 0;
     h = 0;
-    err_row_bytes = 0;
-    strip_bytes = 0;
 
-    /* 分配 TJpgDec 工作池 */
-    pool = (uint8_t *)osal_vmalloc(TJPGD_POOL_SIZE);
-    if (!pool) {
-        osal_printk("%s pool alloc failed (%d)\r\n", JPEG_LOG, TJPGD_POOL_SIZE);
+    /* scratch 最小检查 (精确大小运行时才知道，先用保守上限预检) */
+    if (!scratch || scratch_size < JPEG_SCRATCH_SIZE) {
+        osal_printk("%s scratch too small: %lu < %lu\r\n",
+                    JPEG_LOG, (unsigned long)scratch_size,
+                    (unsigned long)JPEG_SCRATCH_SIZE);
         return false;
     }
+
+    /* scratch[0..4096): TJpgDec 工作池 */
+    pool = scratch;
 
     /* 准备内存流 */
     stream.data = jpeg_data;
@@ -262,7 +271,7 @@ bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
     rc = jd_prepare(&jdec, jpeg_input_func, pool, TJPGD_POOL_SIZE, &stream);
     if (rc != JDR_OK) {
         osal_printk("%s jd_prepare failed: %d\r\n", JPEG_LOG, rc);
-        goto cleanup;
+        return false;
     }
 
     w = jdec.width;
@@ -270,40 +279,37 @@ bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
     osal_printk("%s JPEG: %dx%d, %lu bytes\r\n", JPEG_LOG, w, h,
                 (unsigned long)jpeg_size);
 
-    /* 初始化流式抖动上下文 */
+    /* 计算实际 scratch 需求 */
+    strip_bytes   = (uint32_t)w * (uint16_t)(jdec.msy * 8) * 3;
+    err_row_bytes = (uint32_t)w * 3 * sizeof(int16_t);
+    scratch_used  = TJPGD_POOL_SIZE + strip_bytes + err_row_bytes * 2;
+    if (scratch_used > scratch_size) {
+        osal_printk("%s scratch insufficient: need %lu have %lu\r\n",
+                    JPEG_LOG, (unsigned long)scratch_used,
+                    (unsigned long)scratch_size);
+        return false;
+    }
+
+    /* 初始化流式抖动上下文，先清零再赋所有字段（含指针） */
     (void)memset_s(&s_dctx, sizeof(s_dctx), 0, sizeof(s_dctx));
     s_dctx.img_w     = w;
     s_dctx.img_h     = h;
-    s_dctx.mcu_h     = (uint16_t)(jdec.msy * 8);  /* MCU 行高: 8 or 16 */
-    s_dctx.strip_top = 0xFFFF;                     /* 未开始标记 */
-
-    /* 分配 MCU 行条带 RGB 缓冲 */
-    strip_bytes = (uint32_t)w * s_dctx.mcu_h * 3;
-    s_dctx.strip_rgb = (uint8_t *)osal_vmalloc(strip_bytes);
-    if (!s_dctx.strip_rgb) {
-        osal_printk("%s strip alloc failed (%lu)\r\n", JPEG_LOG, (unsigned long)strip_bytes);
-        goto cleanup;
-    }
-
-    /* 分配误差扩散缓冲 (2行) */
-    err_row_bytes = (uint32_t)w * 3 * sizeof(int16_t);
-    s_dctx.err_cur = (int16_t *)osal_vmalloc(err_row_bytes);
-    s_dctx.err_nxt = (int16_t *)osal_vmalloc(err_row_bytes);
-    if (!s_dctx.err_cur || !s_dctx.err_nxt) {
-        osal_printk("%s err alloc failed\r\n", JPEG_LOG);
-        goto cleanup;
-    }
+    s_dctx.mcu_h     = (uint16_t)(jdec.msy * 8);
+    s_dctx.strip_top = 0xFFFF;
+    s_dctx.strip_rgb = scratch + TJPGD_POOL_SIZE;
+    s_dctx.err_cur   = (int16_t *)(scratch + TJPGD_POOL_SIZE + strip_bytes);
+    s_dctx.err_nxt   = (int16_t *)(scratch + TJPGD_POOL_SIZE + strip_bytes + err_row_bytes);
     (void)memset_s(s_dctx.err_cur, err_row_bytes, 0, err_row_bytes);
     (void)memset_s(s_dctx.err_nxt, err_row_bytes, 0, err_row_bytes);
 
-    /* 开始 ePaper 像素数据传输 (0x10 = DTM1) */
+    /* 所有缓冲区就绪后才开始 ePaper 数据传输，避免分配失败时写入脏数据 */
     EPD_SendCommand(0x10);
 
     /* 解码 — 回调中逐 MCU 行抖动并发送到 EPD SPI */
     rc = jd_decomp(&jdec, jpeg_output_cb, 0);
     if (rc != JDR_OK) {
         osal_printk("%s jd_decomp failed: %d\r\n", JPEG_LOG, rc);
-        goto cleanup;
+        goto done;
     }
 
     /* 处理最后一个 MCU 行条带 */
@@ -314,11 +320,7 @@ bool jpeg_decode_stream_epd(const uint8_t *jpeg_data, uint32_t jpeg_size)
     result = true;
     osal_printk("%s stream done: %dx%d\r\n", JPEG_LOG, w, h);
 
-cleanup:
-    if (s_dctx.strip_rgb) { osal_vfree(s_dctx.strip_rgb); }
-    if (s_dctx.err_cur)   { osal_vfree(s_dctx.err_cur); }
-    if (s_dctx.err_nxt)   { osal_vfree(s_dctx.err_nxt); }
+done:
     (void)memset_s(&s_dctx, sizeof(s_dctx), 0, sizeof(s_dctx));
-    if (pool) { osal_vfree(pool); }
     return result;
 }

@@ -112,8 +112,11 @@ static void *epaper_init_task(const char *arg) {
                        width, height, mode, data_size);
                 EPD_Init();
                 if (mode == IMG_MODE_JPEG) {
-                    /* 流式解码: JPEG → 抖动 → 直接 SPI 输出, 无需 192KB 缓冲 */
-                    if (!jpeg_decode_stream_epd(buf, (uint32_t)data_size)) {
+                    /* 流式解码: JPEG → 抖动 → 直接 SPI 输出, scratch 复用接收缓冲区末尾，零堆分配 */
+                    uint32_t scratch_avail = (data_size < IMG_RX_BUF_SIZE) ?
+                        (IMG_RX_BUF_SIZE - data_size) : 0;
+                    if (!jpeg_decode_stream_epd(buf, (uint32_t)data_size,
+                                               (uint8_t *)buf + data_size, scratch_avail)) {
                         printf("ePaper: JPEG stream decode failed!\r\n");
                     }
                     image_receiver_reset(); /* 缓冲区数据已发送到 EPD, 可安全复用 */

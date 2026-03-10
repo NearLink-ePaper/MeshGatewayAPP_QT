@@ -158,13 +158,20 @@ ProcessedImage ImageUtils::processFromCropped(const QImage &cropped, int targetW
     rot.rotate(90);
     QImage landscape = scaled.transformed(rot);
 
+    // 接收缓冲区末尾用作 JPEG scratch（52096B），JPEG 需 ≤ 43000B
+    static const int JPEG_MAX_BYTES = 43000;
     QByteArray jpegData;
-    QBuffer buffer(&jpegData);
-    buffer.open(QIODevice::WriteOnly);
-    QImageWriter writer(&buffer, "jpeg");
-    writer.setQuality(jpegQuality);
-    writer.write(landscape);
-    buffer.close();
+    int q = jpegQuality;
+    do {
+        jpegData.clear();
+        QBuffer buffer(&jpegData);
+        buffer.open(QIODevice::WriteOnly);
+        QImageWriter writer(&buffer, "jpeg");
+        writer.setQuality(q);
+        writer.write(landscape);
+        buffer.close();
+        q -= 5;
+    } while (jpegData.size() > JPEG_MAX_BYTES && q >= 20);
 
     // 预览：FS 抖动量化到 EPD 调色板，再旋转回 portrait
     QImage jpegDecoded;
