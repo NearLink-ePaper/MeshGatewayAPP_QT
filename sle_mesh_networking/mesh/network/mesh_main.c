@@ -774,11 +774,18 @@ static void *mesh_main_task(const char *arg)
                 MESH_LOG_TAG, g_mesh_node_addr);
 
     /* WiFi SoftAP 在初始化完成后立即启动（不依赖 BLE 连接）
+     * SSID = sle_gw_XXXX，与 BLE 广播名称一致，方便用户识别
      * BLE/WiFi 互斥由 wifi_socket_server 层处理: BLE 激活时拒绝 WiFi 传图 */
-    if (wifi_softap_start() == 0) {
-        wifi_socket_server_start();
-    } else {
-        osal_printk("%s WiFi SoftAP start failed\r\n", MESH_LOG_TAG);
+    {
+        char wifi_ssid[20];
+        (void)snprintf_s(wifi_ssid, sizeof(wifi_ssid), sizeof(wifi_ssid) - 1,
+                         "sle_gw_%04X", (unsigned)g_mesh_node_addr);
+        wifi_socket_server_set_name(wifi_ssid);
+        if (wifi_softap_start(wifi_ssid) == 0) {
+            wifi_socket_server_start();
+        } else {
+            osal_printk("%s WiFi SoftAP start failed\r\n", MESH_LOG_TAG);
+        }
     }
 
     /* ---- 6. 主循环 ---- */

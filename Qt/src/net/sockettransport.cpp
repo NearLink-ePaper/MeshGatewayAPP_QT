@@ -179,6 +179,8 @@ void SocketTransport::startProbe(const QString &host, quint16 port, const QStrin
     m_probeSocket = new QTcpSocket(this);
     connect(m_probeSocket, &QTcpSocket::connected,
             this, &SocketTransport::onProbeConnected);
+    connect(m_probeSocket, &QTcpSocket::readyRead,
+            this, &SocketTransport::onProbeReadyRead);
     connect(m_probeSocket, &QTcpSocket::errorOccurred,
             this, &SocketTransport::onProbeError);
 
@@ -205,7 +207,24 @@ void SocketTransport::stopProbe()
 
 void SocketTransport::onProbeConnected()
 {
-    qDebug() << "[WiFi probe] found device:" << m_probeDevice.host;
+    /* 发送探测魔数，服务器将回复网关名称 */
+    const char probeByte = (char)0xFE;
+    m_probeSocket->write(&probeByte, 1);
+    qDebug() << "[WiFi probe] connected, sent probe byte";
+    /* 等待 onProbeReadyRead 返回网关名称 */
+}
+
+void SocketTransport::onProbeReadyRead()
+{
+    if (!m_probeSocket) return;
+    QByteArray data = m_probeSocket->readAll();
+    if (data.isEmpty()) return;
+
+    QString name = QString::fromLatin1(data.constData(), data.size()).trimmed();
+    if (!name.isEmpty()) {
+        m_probeDevice.name = name;  /* 使用服务器返回的实际网关名称 */
+    }
+    qDebug() << "[WiFi probe] found device:" << m_probeDevice.name;
     m_probeTimeout.stop();
     emit wifiDeviceFound(m_probeDevice);
     emit probeFinished();

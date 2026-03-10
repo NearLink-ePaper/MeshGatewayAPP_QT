@@ -72,6 +72,7 @@ private slots:
     void onError(QAbstractSocket::SocketError err);
     void onTimeout();
     void onProbeConnected();
+    void onProbeReadyRead();
     void onProbeError();
     void onProbeTimeout();
 

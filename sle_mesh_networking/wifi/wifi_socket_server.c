@@ -16,6 +16,17 @@
 #include <string.h>
 
 #define SOCK_LOG    "[wifi sock]"
+
+static char g_gw_name[20] = "sle_gw_0000";  /* 网关名称, 由 wifi_socket_server_set_name 设置 */
+
+void wifi_socket_server_set_name(const char *name)
+{
+    if (name) {
+        (void)strncpy(g_gw_name, name, sizeof(g_gw_name) - 1);
+        g_gw_name[sizeof(g_gw_name) - 1] = '\0';
+    }
+}
+
 #define SERVER_TASK_STACK   0x1800  /* 6KB: waterline=0x498(1.2KB), lwip recv/send 需要额外栈空间。释放 2KB 堆给 WiFi+BT OAL */
 #define SERVER_TASK_PRIO    (osPriority_t)(15)
 
@@ -47,15 +58,34 @@ static void handle_client(int client_fd)
     uint32_t data_size;
     uint8_t *img_buf;
 
-    /* 接收协议头 */
-    if (recv_exact(client_fd, header, WIFI_IMG_HEADER_SIZE) != 0) {
+    /* 读第一字节: 判断是探测 (0xFE) 还是真实传输 (0xAA) */
+    {
+        int n = lwip_recv(client_fd, &header[0], 1, 0);
+        if (n <= 0) {
+            printf("%s header recv failed\r\n", SOCK_LOG);
+            return;
+        }
+    }
+    if (header[0] == WIFI_PROBE_MAGIC) {
+        /* WiFi 探测: 回复网关名称后关闭 */
+        lwip_send(client_fd, g_gw_name, (int)strlen(g_gw_name), 0);
+        printf("%s probe: name='%s'\r\n", SOCK_LOG, g_gw_name);
+        return;
+    }
+    if (header[0] != WIFI_IMG_MAGIC_0) {
+        printf("%s bad magic[0]: %02X\r\n", SOCK_LOG, header[0]);
+        resp = WIFI_IMG_RESP_FAIL;
+        lwip_send(client_fd, &resp, 1, 0);
+        return;
+    }
+    /* 读剩余 11 字节头部 */
+    if (recv_exact(client_fd, &header[1], WIFI_IMG_HEADER_SIZE - 1) != 0) {
         printf("%s header recv failed\r\n", SOCK_LOG);
         return;
     }
-
-    /* 校验 magic */
-    if (header[0] != WIFI_IMG_MAGIC_0 || header[1] != WIFI_IMG_MAGIC_1) {
-        printf("%s bad magic: %02X %02X\r\n", SOCK_LOG, header[0], header[1]);
+    /* 校验 magic[1] */
+    if (header[1] != WIFI_IMG_MAGIC_1) {
+        printf("%s bad magic[1]: %02X\r\n", SOCK_LOG, header[1]);
         resp = WIFI_IMG_RESP_FAIL;
         lwip_send(client_fd, &resp, 1, 0);
         return;

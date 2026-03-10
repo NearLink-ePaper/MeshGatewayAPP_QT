@@ -29,6 +29,15 @@
 #define WIFI_IMG_RESP_FAIL      2
 #define WIFI_IMG_RESP_BUSY      3   /* BLE 已连接，互斥拒绝 */
 
+/** 探测魔数: 客户端发此字节时服务器回复网关名称 */
+#define WIFI_PROBE_MAGIC        0xFE
+
+/**
+ * @brief  设置 WiFi 服务器广播的网关名称
+ * @param  name  名称字符串，如 "sle_gw_006E"
+ */
+void wifi_socket_server_set_name(const char *name);
+
 /**
  * @brief  启动 WiFi 图片接收服务器任务
  * @note   需在 wifi_softap_start() 成功后调用

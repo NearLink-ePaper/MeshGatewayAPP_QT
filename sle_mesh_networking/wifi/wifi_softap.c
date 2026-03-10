@@ -20,7 +20,7 @@
 #define WIFI_MAX_KEY_LEN        65
 #define WIFI_MAX_SSID_LEN       33
 
-int wifi_softap_start(void)
+int wifi_softap_start(const char *ssid)
 {
     td_char ifname[WIFI_IFNAME_MAX_SIZE + 1] = "ap0";
     struct netif *netif_p = TD_NULL;
@@ -35,7 +35,7 @@ int wifi_softap_start(void)
     /* 配置 SoftAP 基本参数 */
     softap_config_stru hapd_conf = {0};
     (void)memcpy_s(hapd_conf.ssid, sizeof(hapd_conf.ssid),
-                   WIFI_SOFTAP_SSID, strlen(WIFI_SOFTAP_SSID));
+                   ssid, strlen(ssid));
     (void)memcpy_s(hapd_conf.pre_shared_key, WIFI_MAX_KEY_LEN,
                    WIFI_SOFTAP_PWD, strlen(WIFI_SOFTAP_PWD));
     hapd_conf.security_type = 3;  /* WPA_WPA2_PSK */
@@ -84,6 +84,6 @@ int wifi_softap_start(void)
     }
 
     printf("%s SoftAP started: SSID=%s IP=192.168.43.1\r\n",
-           SOFTAP_LOG, WIFI_SOFTAP_SSID);
+           SOFTAP_LOG, ssid);
     return 0;
 }
