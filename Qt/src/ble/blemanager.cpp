@@ -313,6 +313,16 @@ void BleManager::onControllerConnected()
 {
     setConnState(Connected);
     setDebugInfo(tr("Connected, discovering services..."));
+
+    // 监听 MTU 协商结果（固件端主动发起 MTU=512 请求）
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+    connect(m_controller, &QLowEnergyController::mtuChanged, this, [this](int mtu) {
+        m_negotiatedMtu = mtu;
+        qDebug() << "[BLE] MTU negotiated:" << mtu;
+        setDebugInfo(tr("MTU: %1").arg(mtu));
+    });
+#endif
+
     m_controller->discoverServices();
 }
 
@@ -413,6 +423,19 @@ void BleManager::onServiceStateChanged(QLowEnergyService::ServiceState state)
         return;
     }
 
+    // 读取当前 MTU 并记录
+#if QT_VERSION >= QT_VERSION_CHECK(6, 2, 0)
+    if (m_controller) {
+        m_negotiatedMtu = m_controller->mtu();
+        qDebug() << "[BLE] Current MTU after service discovery:" << m_negotiatedMtu;
+        if (m_negotiatedMtu <= 23) {
+            setDebugInfo(tr("WARNING: MTU=%1 (default), BLE transfer will be very slow!").arg(m_negotiatedMtu));
+        } else {
+            setDebugInfo(tr("MTU=%1, setting up notifications...").arg(m_negotiatedMtu));
+        }
+    }
+#endif
+
     // 订阅 Notify
     // CCCD 值: 0x0100 = Enable Notification, 0x0200 = Enable Indication
     static const QByteArray CCCD_NOTIFY  = QByteArray::fromHex("0100");
@@ -455,8 +478,8 @@ void BleManager::onCharacteristicWritten(const QLowEnergyCharacteristic &c, cons
     Q_UNUSED(value)
     m_writePending = false;
     drainWriteQueue();
-    // 图片 FAST 模式：写入完成立即发下包，不等 5ms 定时器，速度取决于 BLE 链路 RTT
-    if (!m_writePending && !m_imgCancelled
+    // WriteWithResponse 模式：写入完成立即发下包 (WriteWithoutResponse 由定时器驱动)
+    if (!m_imgFastWriteNoResp && !m_writePending && !m_imgCancelled
         && m_imageSendState.type == ImgSending
         && m_imgFastSeq >= 0 && m_imgFastSeq <= m_imgTotalPkts) {
         imgSendNextFastPaced();
@@ -503,9 +526,20 @@ void BleManager::drainWriteQueue()
 {
     if (m_writePending) return;
     if (m_writeQueue.isEmpty()) return;
+    if (!m_service || !m_rxChar.isValid()) return;
     QByteArray data = m_writeQueue.dequeue();
-    m_writePending = true;
-    m_service->writeCharacteristic(m_rxChar, data, QLowEnergyService::WriteWithResponse);
+
+    if (m_imgFastWriteNoResp) {
+        // WriteWithoutResponse: 无回调, 通过定时器驱动下一次出队
+        m_service->writeCharacteristic(m_rxChar, data, QLowEnergyService::WriteWithoutResponse);
+        if (!m_writeQueue.isEmpty()) {
+            QTimer::singleShot(2, this, &BleManager::drainWriteQueue);
+        }
+    } else {
+        // WriteWithResponse: 由 onCharacteristicWritten 回调驱动
+        m_writePending = true;
+        m_service->writeCharacteristic(m_rxChar, data, QLowEnergyService::WriteWithResponse);
+    }
 }
 
 // ─── 发送 ───────────────────────────────────────────────
@@ -555,6 +589,7 @@ void BleManager::imgCleanup()
     m_imgData.clear();
     m_imgPackets.clear();
     m_imgMulticastTargets.clear();
+    m_imgFastWriteNoResp = false;
 }
 
 // ════════════════════════════════════════════════════════
@@ -684,6 +719,16 @@ void BleManager::resetImageSendState()
 void BleManager::imgSendAllPacketsFast()
 {
     m_imgFastSeq = 0;
+
+    // MTU >= 247: 使用 WriteWithoutResponse + 定时器驱动 (快速)
+    // MTU <  247: 回退到 WriteWithResponse (Long Write, 较慢)
+    m_imgFastWriteNoResp = (m_negotiatedMtu >= 247);
+    qDebug() << "[BLE] FAST mode: MTU=" << m_negotiatedMtu
+             << (m_imgFastWriteNoResp ? "-> WriteWithoutResponse (fast)" : "-> WriteWithResponse (slow, MTU too small)");
+    if (!m_imgFastWriteNoResp) {
+        setDebugInfo(tr("MTU=%1 too small, using slow write mode").arg(m_negotiatedMtu));
+    }
+
     imgSendNextFastPaced();
     m_imgFastProgressTimer.start(50);
 }
@@ -694,7 +739,8 @@ void BleManager::imgSendNextFastPaced()
 
     int seq = m_imgFastSeq;
     if (seq >= m_imgTotalPkts) {
-        // 所有数据包发完, 发 END 帧
+        // 所有数据包发完, END 帧用 WriteWithResponse 确保可靠送达
+        m_imgFastWriteNoResp = false;
         quint16 crc = MeshProtocol::crc16(m_imgData);
         sendRaw(MeshProtocol::buildImageEnd(m_imgDstAddr, crc));
         m_imgFastSeq = m_imgTotalPkts + 1;  // 防止回调重复发 END
@@ -703,9 +749,17 @@ void BleManager::imgSendNextFastPaced()
     }
 
     QByteArray frame = MeshProtocol::buildImageData(m_imgDstAddr, static_cast<quint16>(seq), m_imgPackets[seq]);
-    sendRaw(frame);
-    m_imgFastSeq = seq + 1;
-    // 不再使用定时器延迟，由 onCharacteristicWritten 回调驱动
+
+    if (m_imgFastWriteNoResp && m_service && m_rxChar.isValid()) {
+        // WriteWithoutResponse: 直接写入, 5ms 定时器驱动下一包 (类似 Android)
+        m_service->writeCharacteristic(m_rxChar, frame, QLowEnergyService::WriteWithoutResponse);
+        m_imgFastSeq = seq + 1;
+        m_imgFastPaceTimer.start(5);
+    } else {
+        // WriteWithResponse: 通过串行队列, 由 onCharacteristicWritten 回调驱动
+        sendRaw(frame);
+        m_imgFastSeq = seq + 1;
+    }
 }
 
 void BleManager::imgUpdateFastProgress()

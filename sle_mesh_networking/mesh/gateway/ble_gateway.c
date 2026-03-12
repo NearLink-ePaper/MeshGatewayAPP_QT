@@ -94,7 +94,7 @@ static uint16_t g_gw_conn_id = 0;             /**< 当前 BLE 连接的 Connecti
 static uint8_t  g_gw_connected = 0;           /**< BLE 连接状态: 0=未连接, 1=已连接 */
 static uint16_t g_gw_notify_handle = 0;       /**< TX 特征 (0xFFE1) 的值句柄，用于发送 Notify */
 static uint8_t  g_gw_service_start_count = 0; /**< 已启动的 GATT 服务计数，达到 BLE_GW_SERVICE_NUM 后开始广播 */
-static uint16_t g_gw_mtu = 23;                /**< 当前协商的 BLE MTU 大小 (默认 23, 连接后协商为 247) */
+static uint16_t g_gw_mtu = 23;                /**< 当前协商的 BLE MTU 大小 (默认 23, 连接后协商为 512) */
 static uint8_t  g_gw_needs_reconnect = 0;     /**< 断连标记: 1=需要重新连接 (供外部模块查询) */
 
 static uint8_t g_gw_adv_name[MAX_NAME_LENGTH] = "sle_gw_test";  /**< BLE 广播设备名称 (初始化时会改为 sle_gw_XXXX) */
@@ -152,7 +152,7 @@ static struct {
  *  缓存大小取决于目标图片最大尺寸，当前 48KB 可支持 296x128 墨水屏图片。
  * ===================================================================== */
 #define IMG_GW_CACHE_SIZE     96000  /**< 图片缓存 96KB: 支持 480×800 高质量 JPEG。任务栈已回退至 ~37KB，节省 ~55KB，96KB BSS 增量下堆余量约 19KB */
-#define IMG_GW_PKT_PAYLOAD    200    /**< APP 端每包的原始负载大小 (字节)，由 APP 分包决定 */
+#define IMG_GW_PKT_PAYLOAD    237    /**< APP 端每包的原始负载大小 (字节)，与 Qt 端 IMG_PKT_PAYLOAD 保持一致 */
 #define IMG_GW_MAX_RETRY      5      /**< 流控补包最大轮次。超过此次数后放弃传输。
                                           网络质量差时可适当增大 (7-10) */
 #define IMG_GW_BITMAP_BYTES   ((IMG_GW_CACHE_SIZE / IMG_FC_PKT_PAYLOAD + 7) / 8)  /**< O4: 缺包位图字节数，每 bit 表示一个 FC 大包是否缺失 */
@@ -2472,7 +2472,7 @@ static void gw_conn_state_change_cbk(uint16_t conn_id, bd_addr_t *addr,
         g_gw_conn_id = conn_id;
         g_gw_connected = 1;
         osal_printk("%s ====== PHONE CONNECTED ======\r\n", BLE_GW_LOG);
-        gatts_set_mtu_size(conn_id, 247);  /* 主动请求最大 MTU */
+        gatts_set_mtu_size(conn_id, 512);  /* 主动请求最大 MTU (BLE 5.0 上限) */
     } else if (conn_state == GAP_BLE_STATE_DISCONNECTED) {
         g_gw_connected = 0;
         g_gw_needs_reconnect = 1;

@@ -134,7 +134,7 @@ public:
     static constexpr quint8 IMG_XFER_ACK  = 0x01;
 
     /* ── 分包参数 ── */
-    static constexpr int IMG_PKT_PAYLOAD = 200;
+    static constexpr int IMG_PKT_PAYLOAD = 237;
 
     // 下行帧构造
     static QByteArray buildUnicast(quint16 dstAddr, const QByteArray &data);

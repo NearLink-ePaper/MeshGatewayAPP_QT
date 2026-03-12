@@ -182,6 +182,9 @@ private:
     QTimer                          m_rssiRefreshTimer;
     QTimer                          m_topoQueryTimer;
 
+    // BLE MTU
+    int                             m_negotiatedMtu = 23;
+
     // BLE 写入队列
     QQueue<QByteArray>              m_writeQueue;
     bool                            m_writePending = false;
@@ -195,6 +198,7 @@ private:
     int                             m_imgNextSeq = 0;
     ImageSendMode                   m_imgMode = FastMode;
     bool                            m_imgCancelled = false;
+    bool                            m_imgFastWriteNoResp = false; // FAST模式使用WriteWithoutResponse
     int                             m_imgWidth = 0;
     int                             m_imgHeight = 0;
     int                             m_imgFastSeq = 0;
